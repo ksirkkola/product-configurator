@@ -2,12 +2,15 @@ import {
   Badge,
   Box,
   HStack,
+  Link,
   NumberDecrementStepper,
   NumberIncrementStepper,
   NumberInput,
   NumberInputField,
   NumberInputStepper,
   Text,
+  Wrap,
+  WrapItem,
   VStack,
 } from '@chakra-ui/react';
 import { PriceListItem } from '../types';
@@ -21,6 +24,8 @@ interface Props {
   options: PriceListItem[];
   qtys: Record<string, number>;
   onQtyChange: (itemId: string, qty: number) => void;
+  specSheetFileId?: string;
+  standardsSupported?: string;
 }
 
 export default function OptionsPicker({
@@ -30,7 +35,12 @@ export default function OptionsPicker({
   options,
   qtys,
   onQtyChange,
+  specSheetFileId,
+  standardsSupported,
 }: Props) {
+  const standardsList = standardsSupported
+    ? standardsSupported.split(',').map((s) => s.trim()).filter(Boolean)
+    : [];
   return (
     <VStack align="stretch" spacing={4}>
       <Box borderWidth="1px" borderRadius="md" p={3}>
@@ -45,6 +55,27 @@ export default function OptionsPicker({
                 <Badge colorScheme="orange">PRF / price on request</Badge>
               )}
             </Text>
+            {specSheetFileId && (
+              <Link
+                href={`https://api.hailer.com/file/${specSheetFileId}`}
+                isExternal
+                fontSize="sm"
+                color="blue.400"
+                mt={1}
+                display="inline-block"
+              >
+                📄 View Spec Sheet
+              </Link>
+            )}
+            {standardsList.length > 0 && (
+              <Wrap spacing={1} mt={2}>
+                {standardsList.map((s) => (
+                  <WrapItem key={s}>
+                    <Badge colorScheme="teal" fontSize="2xs">{s}</Badge>
+                  </WrapItem>
+                ))}
+              </Wrap>
+            )}
           </Box>
           <NumberInput
             size="sm"

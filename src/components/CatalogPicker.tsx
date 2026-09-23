@@ -28,14 +28,15 @@ export default function CatalogPicker({ mains, selectedId, onSelect }: Props) {
       (m) =>
         m.productCode.toLowerCase().includes(q) ||
         m.description.toLowerCase().includes(q) ||
-        m.name.toLowerCase().includes(q),
+        m.name.toLowerCase().includes(q) ||
+        (m.standardsSupported ?? '').toLowerCase().includes(q),
     );
   }, [mains, search]);
 
   return (
     <VStack align="stretch" spacing={3}>
       <Input
-        placeholder="Search by product code or description…"
+        placeholder="Search by product code, description, or standard (e.g. ASTM F2370)…"
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         size="sm"

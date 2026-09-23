@@ -12,7 +12,7 @@ import {
 } from '@chakra-ui/react';
 import { Totals } from '../pricing';
 import { formatMoney } from '../hailer/api-helpers';
-import { COMMISSION_TIERS } from '../constants/schema';
+import { COMMISSION_TIERS, COMMISSION_TIER_LABELS } from '../constants/schema';
 
 interface Props {
   totals: Totals;
@@ -35,7 +35,7 @@ export default function PricingPanel({ totals, commissionPct, onCommissionChange
           >
             {COMMISSION_TIERS.map((t) => (
               <option key={t} value={t}>
-                {t === 0 ? 'No commission' : `${t}%`}
+                {t === 0 ? 'No commission' : COMMISSION_TIER_LABELS[t] ?? `${t}%`}
               </option>
             ))}
           </Select>
@@ -63,7 +63,7 @@ export default function PricingPanel({ totals, commissionPct, onCommissionChange
             <StatNumber fontSize="lg">{formatMoney(totals.costSum)}</StatNumber>
           </Stat>
           <Stat>
-            <StatLabel>Gross margin</StatLabel>
+            <StatLabel>Gross margin (base product)</StatLabel>
             <StatNumber fontSize="lg">{totals.marginPct.toFixed(1)}%</StatNumber>
           </Stat>
         </StatGroup>

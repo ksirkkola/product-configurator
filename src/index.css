@@ -15,10 +15,13 @@ body {
     visibility: hidden;
   }
   #quote-print-area,
-  #quote-print-area * {
+  #quote-print-area *,
+  #rental-quote-print-area,
+  #rental-quote-print-area * {
     visibility: visible;
   }
-  #quote-print-area {
+  #quote-print-area,
+  #rental-quote-print-area {
     position: absolute;
     top: 0;
     left: 0;

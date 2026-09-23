@@ -1,9 +1,9 @@
 {
   "author": "TMRX",
   "appId": "6a686250ecb3aa66f7e12b14",
-  "description": "Configure a product from the Price List catalog, generate a customer quote, or push parts to a Work Order.",
-  "version": "1.1.0",
-  "versionDescription": "Multi-product quotes, agent commission, opportunity save, work order push, calibration calculator",
+  "description": "Configure a product from the Price List catalog, generate a customer quote, push parts to a Work Order, or start a Rental.",
+  "version": "3.26.1",
+  "versionDescription": "IMPORTANT: this build is based on a recovered v3.11.1 local checkout (the source this app was actually running from — v3.12.0 through v3.26.0 — was never committed to git and could not be found anywhere). The Rental tab and all v3.11.1 functionality is fully intact. Known missing from the gap: the Pricing panel's second stat box (Cost total / Gross margin total, split out from the base-product-only figures) from v3.26.0's own changelog — re-add if noticed missing. This version's actual change: every 'Failed to...' error across the app (Save Draft, Rental push, Work Order push, Opportunity creation, catalog/calibration loading) now shows Hailer's real field-level error details instead of the generic top-level message alone — makes future failures diagnosable instead of a dead end.",
   "config": {
     "fields": {
       "workflowId": {

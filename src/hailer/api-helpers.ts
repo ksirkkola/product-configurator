@@ -46,6 +46,22 @@ export function readLinkName(v: unknown): string | undefined {
   return undefined;
 }
 
+// File-modifier fields store a JSON-stringified array of file IDs.
+export function firstFileId(raw: unknown): string | undefined {
+  if (!raw) return undefined;
+  try {
+    const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    if (Array.isArray(parsed)) return parsed[0];
+  } catch {
+    if (typeof raw === 'string') return raw;
+  }
+  return undefined;
+}
+
+export function imageUrl(fileId: string, size: 'thumb' | 'hires' = 'hires'): string {
+  return `https://api.hailer.com/image/${size}/${fileId}`;
+}
+
 export function formatMoney(value: number | undefined | null): string {
   if (value == null) return '—';
   return new Intl.NumberFormat(undefined, {

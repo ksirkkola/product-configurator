@@ -25,6 +25,7 @@ import {
   WORK_ORDER_LINE_ITEM_FIELDS,
 } from '../constants/schema';
 import { ConfigLine, WorkOrderSummary } from '../types';
+import { formatHailerError } from '../hailerError';
 
 interface Props {
   hailer: HailerApi;
@@ -115,13 +116,7 @@ export default function WorkOrderPush({ hailer, workflows, lines }: Props) {
         message: `Created ${created.length} line item(s) on the selected work order.`,
       });
     } catch (err) {
-      setResult({
-        ok: false,
-        message:
-          err instanceof Error
-            ? err.message
-            : 'Failed to create work order line items — nothing was saved.',
-      });
+      setResult({ ok: false, message: formatHailerError(err) });
     } finally {
       setPushing(false);
     }

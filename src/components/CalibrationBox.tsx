@@ -19,12 +19,14 @@ import { Activity, HailerApi, Workflow } from '@hailer/app-sdk';
 import { listAll, formatMoney } from '../hailer/api-helpers';
 import { createFieldResolver } from '../hailer/field-resolver';
 import { CALIBRATION } from '../constants/schema';
+import { formatHailerError } from '../hailerError';
 
 export interface CalibrationQuoteLine {
   id: string;
   label: string;
   price: number;
   cost: number;
+  years: number; // 1-3 — recurring on-site/in-house calibration contract length; drives Qty in the quote
 }
 
 interface CountryRate {
@@ -61,6 +63,7 @@ export default function CalibrationBox({ hailer, workflows, onAdd }: Props) {
 
   const [destination, setDestination] = useState('');
   const [travelers, setTravelers] = useState(1);
+  const [years, setYears] = useState(1);
   const [selectedSystems, setSelectedSystems] = useState<Record<string, boolean>>({});
 
   const calWorkflow = useMemo(
@@ -105,8 +108,7 @@ export default function CalibrationBox({ hailer, workflows, onAdd }: Props) {
       })
       .catch((err: unknown) => {
         if (cancelled) return;
-        const e = err as { msg?: string; message?: string };
-        setLoadError(e?.msg || e?.message || String(err));
+        setLoadError(formatHailerError(err));
       });
     return () => {
       cancelled = true;
@@ -158,6 +160,8 @@ export default function CalibrationBox({ hailer, workflows, onAdd }: Props) {
 
     // One quote line per service; travel gets its own line and absorbs the
     // €100 round-up so the lines sum exactly to the sheet's Single Cal price.
+    // `years` rides along on every line as the recurring-contract length —
+    // App.tsx uses it as the line's Qty, so Total = Single Cal price × years.
     const lines: CalibrationQuoteLine[] = picked.map((s) => ({
       id: mkId(),
       label:
@@ -166,6 +170,7 @@ export default function CalibrationBox({ hailer, workflows, onAdd }: Props) {
           : `Calibration ${s.displayName} — ${where}`,
       price: s.daysOnSite * laborDay * travelers + s.partsCost * (1 + partsMarkup),
       cost: s.daysOnSite * laborDay * travelers + s.partsCost,
+      years,
     }));
     const systemsSum = lines.reduce((s, l) => s + l.price, 0);
     const remainder = quote.price - systemsSum; // travel + rounding pad
@@ -175,6 +180,7 @@ export default function CalibrationBox({ hailer, workflows, onAdd }: Props) {
         label: `Travel & expenses — ${where}`,
         price: remainder,
         cost: quote.travel,
+        years,
       });
     } else if (remainder > 0 && lines.length > 0) {
       // In-house (no travel): put the €100 rounding pad on the last service line.
@@ -229,6 +235,18 @@ export default function CalibrationBox({ hailer, workflows, onAdd }: Props) {
               onChange={(e) => setTravelers(Number(e.target.value))}
               isDisabled={isInHouse}
             >
+              {[1, 2, 3].map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
+              ))}
+            </Select>
+          </Box>
+          <Box>
+            <Text fontSize="sm" mb={1} color="subtleText">
+              Years
+            </Text>
+            <Select size="sm" value={years} onChange={(e) => setYears(Number(e.target.value))}>
               {[1, 2, 3].map((n) => (
                 <option key={n} value={n}>
                   {n}
@@ -302,6 +320,16 @@ export default function CalibrationBox({ hailer, workflows, onAdd }: Props) {
                     {formatMoney(quote.price)}
                   </StatNumber>
                 </Stat>
+                {years > 1 && (
+                  <HStack justify="space-between">
+                    <Text fontSize="sm" color="subtleText">
+                      × {years} years
+                    </Text>
+                    <Text fontSize="sm" fontWeight="bold">
+                      {formatMoney(quote.price * years)}
+                    </Text>
+                  </HStack>
+                )}
                 <Button colorScheme="green" size="sm" onClick={handleAdd}>
                   Add to quote
                 </Button>
