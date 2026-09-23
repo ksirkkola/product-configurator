@@ -80,13 +80,18 @@ export function buildQuoteDocDefinition(input: QuotePdfInput): TDocumentDefiniti
   }
 
   // Discount rows are omitted entirely when there's no discount to report —
-  // a "POS Discount (%): 0%" line on every section would just be noise on a
+  // a "Discount (%): 0%" line on every section would just be noise on a
   // printed/downloaded quote. On-screen (QuoteView) still always shows the
   // editable field so the discount is discoverable; this only affects the PDF.
-  function discountRows(discountPct: number, discountAmount: number): TableCell[][] {
+  // Calibration is the only section that uses the "POS Discount" term/orange
+  // styling — every other section just says "Discount", matching QuoteView.
+  function discountRows(discountPct: number, discountAmount: number, sectionType: string): TableCell[][] {
     if (discountPct <= 0) return [];
+    const isPos = sectionType === ITEM_TYPE.CALIBRATION;
+    const pctLabel = isPos ? 'POS Discount (%)' : 'Discount (%)';
+    const pctColor = isPos ? '#dd6b20' : '#718096';
     return [
-      [{ text: '', colSpan: 5 }, {}, {}, {}, {}, { text: 'POS Discount (%)', color: '#dd6b20', bold: true, fontSize: 9, alignment: 'right' }, { text: `${discountPct}%`, color: '#dd6b20', bold: true, fontSize: 9, alignment: 'right' }],
+      [{ text: '', colSpan: 5 }, {}, {}, {}, {}, { text: pctLabel, color: pctColor, bold: isPos, fontSize: 9, alignment: 'right' }, { text: `${discountPct}%`, color: pctColor, bold: isPos, fontSize: 9, alignment: 'right' }],
       [{ text: '', colSpan: 5 }, {}, {}, {}, {}, { text: 'Discount ($)', color: '#718096', fontSize: 9, alignment: 'right' }, { text: `-${formatMoney(discountAmount)}`, color: '#dd6b20', fontSize: 9, alignment: 'right' }],
     ];
   }
@@ -97,11 +102,11 @@ export function buildQuoteDocDefinition(input: QuotePdfInput): TDocumentDefiniti
     body.push(sectionHeaderRow(section.label));
     if (lines.length === 0) {
       body.push([{ text: section.type === ITEM_TYPE.ISO_CERTIFICATION ? 'Not included' : '—', colSpan: 7, italics: true, color: '#718096' }, {}, {}, {}, {}, {}, {}]);
-      if (discountable) discountRows(discountPct, discountAmount).forEach((r) => body.push(r));
+      if (discountable) discountRows(discountPct, discountAmount, section.type).forEach((r) => body.push(r));
       body.push(subtotalRow(section.type === ITEM_TYPE.ISO_CERTIFICATION ? '' : formatMoney(netSubtotal)));
     } else {
       lines.forEach((p) => body.push(lineRow(p)));
-      if (discountable) discountRows(discountPct, discountAmount).forEach((r) => body.push(r));
+      if (discountable) discountRows(discountPct, discountAmount, section.type).forEach((r) => body.push(r));
       body.push(subtotalRow(formatMoney(netSubtotal)));
     }
   }
@@ -115,7 +120,7 @@ export function buildQuoteDocDefinition(input: QuotePdfInput): TDocumentDefiniti
     if (lines.length === 0 && !isShipping) continue;
     body.push(sectionHeaderRow(section.label));
     lines.forEach((p) => body.push(lineRow(p)));
-    if (discountable) discountRows(discountPct, discountAmount).forEach((r) => body.push(r));
+    if (discountable) discountRows(discountPct, discountAmount, section.type).forEach((r) => body.push(r));
     if (lines.length > 0) body.push(subtotalRow(formatMoney(netSubtotal)));
     if (isShipping) {
       body.push([{ text: '', colSpan: 5 }, {}, {}, {}, {}, { text: 'Final Destination', color: '#718096', fontSize: 9, alignment: 'right' }, { text: details.finalDestinationCountry || '—', fontSize: 9, alignment: 'right' }]);

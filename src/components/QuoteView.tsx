@@ -318,7 +318,7 @@ export default function QuoteView({
                   <>
                     <Tr>
                       <Td colSpan={5} />
-                      <Td isNumeric color="orange.500" fontWeight="bold">POS Discount (%)</Td>
+                      <Td isNumeric color="subtleText">Discount (%)</Td>
                       <Td isNumeric>
                         <EditablePercentCell
                           value={discountPct}
@@ -371,7 +371,14 @@ export default function QuoteView({
                     <>
                       <Tr>
                         <Td colSpan={5} />
-                        <Td isNumeric color="orange.500" fontWeight="bold">POS Discount (%)</Td>
+                        {/* Calibration is the only discountable post-system section (Shipping
+                            isn't) — "POS Discount" is specifically its term; every other
+                            section elsewhere in this table just says "Discount". */}
+                        {section.type === ITEM_TYPE.CALIBRATION ? (
+                          <Td isNumeric color="orange.500" fontWeight="bold">POS Discount (%)</Td>
+                        ) : (
+                          <Td isNumeric color="subtleText">Discount (%)</Td>
+                        )}
                         <Td isNumeric>
                           <EditablePercentCell
                             value={discountPct}
