@@ -79,14 +79,16 @@ export function buildQuoteDocDefinition(input: QuotePdfInput): TDocumentDefiniti
     return [{ text: '', colSpan: 5 }, {}, {}, {}, {}, { text: 'Subtotal', bold: true, alignment: 'right', fontSize: 9 }, { text: value, bold: true, fontSize: 9 }];
   }
 
+  // Discount rows are omitted entirely when there's no discount to report —
+  // a "POS Discount (%): 0%" line on every section would just be noise on a
+  // printed/downloaded quote. On-screen (QuoteView) still always shows the
+  // editable field so the discount is discoverable; this only affects the PDF.
   function discountRows(discountPct: number, discountAmount: number): TableCell[][] {
-    const rows: TableCell[][] = [
-      [{ text: '', colSpan: 5 }, {}, {}, {}, {}, { text: 'Discount (%)', color: '#718096', fontSize: 9, alignment: 'right' }, { text: `${discountPct}%`, fontSize: 9, alignment: 'right' }],
+    if (discountPct <= 0) return [];
+    return [
+      [{ text: '', colSpan: 5 }, {}, {}, {}, {}, { text: 'POS Discount (%)', color: '#dd6b20', bold: true, fontSize: 9, alignment: 'right' }, { text: `${discountPct}%`, color: '#dd6b20', bold: true, fontSize: 9, alignment: 'right' }],
+      [{ text: '', colSpan: 5 }, {}, {}, {}, {}, { text: 'Discount ($)', color: '#718096', fontSize: 9, alignment: 'right' }, { text: `-${formatMoney(discountAmount)}`, color: '#dd6b20', fontSize: 9, alignment: 'right' }],
     ];
-    if (discountPct > 0) {
-      rows.push([{ text: '', colSpan: 5 }, {}, {}, {}, {}, { text: 'Discount ($)', color: '#718096', fontSize: 9, alignment: 'right' }, { text: `-${formatMoney(discountAmount)}`, color: '#dd6b20', fontSize: 9, alignment: 'right' }]);
-    }
-    return rows;
   }
 
   const body: TableCell[][] = [headerRow];

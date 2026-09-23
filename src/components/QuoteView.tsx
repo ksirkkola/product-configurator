@@ -318,7 +318,7 @@ export default function QuoteView({
                   <>
                     <Tr>
                       <Td colSpan={5} />
-                      <Td isNumeric color="subtleText">Discount (%)</Td>
+                      <Td isNumeric color="orange.500" fontWeight="bold">POS Discount (%)</Td>
                       <Td isNumeric>
                         <EditablePercentCell
                           value={discountPct}
@@ -371,7 +371,7 @@ export default function QuoteView({
                     <>
                       <Tr>
                         <Td colSpan={5} />
-                        <Td isNumeric color="subtleText">Discount (%)</Td>
+                        <Td isNumeric color="orange.500" fontWeight="bold">POS Discount (%)</Td>
                         <Td isNumeric>
                           <EditablePercentCell
                             value={discountPct}

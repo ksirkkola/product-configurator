@@ -2,8 +2,8 @@
   "author": "TMRX",
   "appId": "6a686250ecb3aa66f7e12b14",
   "description": "Configure a product from the Price List catalog, generate a customer quote, push parts to a Work Order, or start a Rental.",
-  "version": "3.26.3",
-  "versionDescription": "Correction to v3.26.2: the previous release added a discount field inside the Calibration configurator box, but the actual missing 'POS discount' was the Quote tab's Calibration Options section not having the same per-section Discount (%) row every other section (Startup, Base Product, etc.) already shows above its Subtotal — confirmed from a screenshot. Reverted the wrong CalibrationBox change and added 'calibration' to DISCOUNTABLE_TYPES instead, so Calibration Options now gets the standard Discount (%) row like every other quote section. The Cost (total) / Gross margin (total) stat box from v3.26.2 is unaffected and stays as-is.",
+  "version": "3.26.4",
+  "versionDescription": "Two refinements to the per-section quote discount (all sections — Base Product, Options, Startup, Calibration, etc.): (1) relabeled 'Discount (%)' to 'POS Discount (%)' and styled it bold orange on-screen so it stands out as an editable control instead of blending into the other financial rows. (2) On the downloaded PDF only, the POS Discount (%) / Discount ($) rows are now omitted entirely for any section where the discount is 0% — on-screen the editable field always stays visible so it's still discoverable, but a printed quote no longer shows '0%' discount lines on every section.",
   "config": {
     "fields": {
       "workflowId": {
