@@ -2,8 +2,8 @@
   "author": "TMRX",
   "appId": "6a686250ecb3aa66f7e12b14",
   "description": "Configure a product from the Price List catalog, generate a customer quote, push parts to a Work Order, or start a Rental.",
-  "version": "3.26.2",
-  "versionDescription": "Restored two more pieces that were missing from the recovered v3.11.1 base (see v3.26.1 notes for background): (1) Calibration box: added back the POS discount — an editable % field above the Single Cal price subtotal, knocked off list price before the calibration lines are pushed to the quote (cost is untouched, so it shows up as reduced margin, same as a Quote-tab section discount). (2) Pricing panel: added the second stat box, Cost (total) / Gross margin (total) — covering base product + standard/custom options + customization — alongside the existing box, now explicitly labeled (base product). Also fixed in this release (workspace-only, no app change): 6 Opportunity fields (Lead Information, Product Family/Name/Categorization, Startup Type, Initial Lead Contact) were wrongly required, breaking every Save Draft — set to not required.",
+  "version": "3.26.3",
+  "versionDescription": "Correction to v3.26.2: the previous release added a discount field inside the Calibration configurator box, but the actual missing 'POS discount' was the Quote tab's Calibration Options section not having the same per-section Discount (%) row every other section (Startup, Base Product, etc.) already shows above its Subtotal — confirmed from a screenshot. Reverted the wrong CalibrationBox change and added 'calibration' to DISCOUNTABLE_TYPES instead, so Calibration Options now gets the standard Discount (%) row like every other quote section. The Cost (total) / Gross margin (total) stat box from v3.26.2 is unaffected and stays as-is.",
   "config": {
     "fields": {
       "workflowId": {

@@ -105,6 +105,7 @@ export const DISCOUNTABLE_TYPES: string[] = [
   ITEM_TYPE.CUSTOM_OPTION,
   ITEM_TYPE.CUSTOMIZATION,
   ITEM_TYPE.STARTUP,
+  ITEM_TYPE.CALIBRATION,
 ];
 
 // Scope for the Pricing panel's "(total)" Cost / Gross margin stat box —
