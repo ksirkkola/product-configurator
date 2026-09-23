@@ -107,6 +107,18 @@ export const DISCOUNTABLE_TYPES: string[] = [
   ITEM_TYPE.STARTUP,
 ];
 
+// Scope for the Pricing panel's "(total)" Cost / Gross margin stat box —
+// base product plus the options/customization work bundled with it. Excludes
+// ISO Certification, Startup, Calibration, and Shipping, same as the
+// "(base product)" box does, so the two figures are directly comparable
+// (one is just a wider ring around the same core system).
+export const MARGIN_TOTAL_TYPES: string[] = [
+  ITEM_TYPE.MAIN,
+  ITEM_TYPE.STANDARD_OPTION,
+  ITEM_TYPE.CUSTOM_OPTION,
+  ITEM_TYPE.CUSTOMIZATION,
+];
+
 // Some base products require a specific option every time they're quoted
 // (e.g. ACE always needs the OUS ManikinPC license). Keyed by product code;
 // value is the option's exact Description text, matched against the Price

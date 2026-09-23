@@ -2,8 +2,8 @@
   "author": "TMRX",
   "appId": "6a686250ecb3aa66f7e12b14",
   "description": "Configure a product from the Price List catalog, generate a customer quote, push parts to a Work Order, or start a Rental.",
-  "version": "3.26.1",
-  "versionDescription": "IMPORTANT: this build is based on a recovered v3.11.1 local checkout (the source this app was actually running from — v3.12.0 through v3.26.0 — was never committed to git and could not be found anywhere). The Rental tab and all v3.11.1 functionality is fully intact. Known missing from the gap: the Pricing panel's second stat box (Cost total / Gross margin total, split out from the base-product-only figures) from v3.26.0's own changelog — re-add if noticed missing. This version's actual change: every 'Failed to...' error across the app (Save Draft, Rental push, Work Order push, Opportunity creation, catalog/calibration loading) now shows Hailer's real field-level error details instead of the generic top-level message alone — makes future failures diagnosable instead of a dead end.",
+  "version": "3.26.2",
+  "versionDescription": "Restored two more pieces that were missing from the recovered v3.11.1 base (see v3.26.1 notes for background): (1) Calibration box: added back the POS discount — an editable % field above the Single Cal price subtotal, knocked off list price before the calibration lines are pushed to the quote (cost is untouched, so it shows up as reduced margin, same as a Quote-tab section discount). (2) Pricing panel: added the second stat box, Cost (total) / Gross margin (total) — covering base product + standard/custom options + customization — alongside the existing box, now explicitly labeled (base product). Also fixed in this release (workspace-only, no app change): 6 Opportunity fields (Lead Information, Product Family/Name/Categorization, Startup Type, Initial Lead Contact) were wrongly required, breaking every Save Draft — set to not required.",
   "config": {
     "fields": {
       "workflowId": {

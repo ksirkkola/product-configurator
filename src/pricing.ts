@@ -1,5 +1,5 @@
 import { ConfigLine } from './types';
-import { COMMISSION_EXEMPT_TYPES, ITEM_TYPE } from './constants/schema';
+import { COMMISSION_EXEMPT_TYPES, ITEM_TYPE, MARGIN_TOTAL_TYPES } from './constants/schema';
 
 // Keyed by line.item._id — a manual per-unit price that replaces the catalog
 // price for that line (rare discounting / one-off pricing on a PRF item).
@@ -27,7 +27,10 @@ export interface Totals {
   listSum: number;
   finalSum: number;
   costSum: number;
-  marginPct: number;
+  baseCostSum: number; // base product only
+  marginPct: number; // base product only
+  totalCostSum: number; // base product + standard/custom options + customization
+  totalMarginPct: number; // same scope as totalCostSum
   prfCount: number;
 }
 
@@ -36,10 +39,12 @@ export interface Totals {
 // agents get no cut of service/pass-through work, so those lines carry their
 // flat price (see COMMISSION_EXEMPT_TYPES).
 // Margin follows the price sheet's GM NET = (price - cost) / price, on list price
-// (commission is the agent's cut, not ours) — and is scoped to the BASE
-// PRODUCT only, per business rule: options/customization/startup/etc. don't
-// factor into the margin figure shown here, even though they still count
-// toward listSum/costSum/finalSum for the other totals.
+// (commission is the agent's cut, not ours). Two scopes are tracked side by
+// side: marginPct/baseCostSum is the BASE PRODUCT only; totalMarginPct/
+// totalCostSum widens that to base product + standard/custom options +
+// customization (MARGIN_TOTAL_TYPES). ISO Certification, Startup, Calibration,
+// and Shipping are excluded from BOTH — they still count toward
+// listSum/costSum/finalSum for the other totals, just not either margin figure.
 export function computeTotals(
   lines: ConfigLine[],
   commissionPct: number,
@@ -82,9 +87,26 @@ export function computeTotals(
   const costSum = priced.reduce((s, p) => s + p.costTotal, 0);
   const mainLines = priced.filter((p) => p.line.item.itemType === ITEM_TYPE.MAIN);
   const mainListSum = mainLines.reduce((s, p) => s + p.listTotal, 0);
-  const mainCostSum = mainLines.reduce((s, p) => s + p.costTotal, 0);
-  const marginPct = mainListSum > 0 ? ((mainListSum - mainCostSum) / mainListSum) * 100 : 0;
+  const baseCostSum = mainLines.reduce((s, p) => s + p.costTotal, 0);
+  const marginPct = mainListSum > 0 ? ((mainListSum - baseCostSum) / mainListSum) * 100 : 0;
+
+  const marginTotalLines = priced.filter((p) => MARGIN_TOTAL_TYPES.includes(p.line.item.itemType));
+  const marginTotalListSum = marginTotalLines.reduce((s, p) => s + p.listTotal, 0);
+  const totalCostSum = marginTotalLines.reduce((s, p) => s + p.costTotal, 0);
+  const totalMarginPct =
+    marginTotalListSum > 0 ? ((marginTotalListSum - totalCostSum) / marginTotalListSum) * 100 : 0;
+
   const prfCount = priced.filter((p) => !p.hasPrice).length;
 
-  return { lines: priced, listSum, finalSum, costSum, marginPct, prfCount };
+  return {
+    lines: priced,
+    listSum,
+    finalSum,
+    costSum,
+    baseCostSum,
+    marginPct,
+    totalCostSum,
+    totalMarginPct,
+    prfCount,
+  };
 }

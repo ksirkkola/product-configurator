@@ -59,12 +59,23 @@ export default function PricingPanel({ totals, commissionPct, onCommissionChange
 
         <StatGroup>
           <Stat>
-            <StatLabel>Cost</StatLabel>
-            <StatNumber fontSize="lg">{formatMoney(totals.costSum)}</StatNumber>
+            <StatLabel>Cost (base product)</StatLabel>
+            <StatNumber fontSize="lg">{formatMoney(totals.baseCostSum)}</StatNumber>
           </Stat>
           <Stat>
             <StatLabel>Gross margin (base product)</StatLabel>
             <StatNumber fontSize="lg">{totals.marginPct.toFixed(1)}%</StatNumber>
+          </Stat>
+        </StatGroup>
+
+        <StatGroup>
+          <Stat>
+            <StatLabel>Cost (total)</StatLabel>
+            <StatNumber fontSize="lg">{formatMoney(totals.totalCostSum)}</StatNumber>
+          </Stat>
+          <Stat>
+            <StatLabel>Gross margin (total)</StatLabel>
+            <StatNumber fontSize="lg">{totals.totalMarginPct.toFixed(1)}%</StatNumber>
           </Stat>
         </StatGroup>
 

@@ -20,6 +20,7 @@ import { listAll, formatMoney } from '../hailer/api-helpers';
 import { createFieldResolver } from '../hailer/field-resolver';
 import { CALIBRATION } from '../constants/schema';
 import { formatHailerError } from '../hailerError';
+import EditablePercentCell from './EditablePercentCell';
 
 export interface CalibrationQuoteLine {
   id: string;
@@ -65,6 +66,11 @@ export default function CalibrationBox({ hailer, workflows, onAdd }: Props) {
   const [travelers, setTravelers] = useState(1);
   const [years, setYears] = useState(1);
   const [selectedSystems, setSelectedSystems] = useState<Record<string, boolean>>({});
+  // Point-of-sale discount — a manual % knocked off this box's own price before
+  // it's added to the quote (separate from the Quote tab's per-section
+  // discounts, which apply to already-added lines). Cost is untouched, so the
+  // discount shows up as reduced margin, same as a section discount does.
+  const [posDiscountPct, setPosDiscountPct] = useState(0);
 
   const calWorkflow = useMemo(
     () => workflows.find((w) => w._id === CALIBRATION.workflowId),
@@ -144,10 +150,12 @@ export default function CalibrationBox({ hailer, workflows, onAdd }: Props) {
 
     const travel = travelLabor + airfare + car + hotel + food;
     // Single Cal price: everything summed, rounded UP to the nearest €100.
-    const price = Math.ceil((travel + onsiteLabor + partsSell) / 100) * 100;
+    const listPrice = Math.ceil((travel + onsiteLabor + partsSell) / 100) * 100;
     const cost = travel + onsiteLabor + partsRaw;
-    return { onSiteDays, travel, onsiteLabor, partsSell, price, cost };
-  }, [country, picked, travelers, constants]);
+    const posDiscountAmount = listPrice * (posDiscountPct / 100);
+    const price = listPrice - posDiscountAmount;
+    return { onSiteDays, travel, onsiteLabor, partsSell, listPrice, posDiscountAmount, price, cost };
+  }, [country, picked, travelers, constants, posDiscountPct]);
 
   function handleAdd() {
     if (!quote || !country) return;
@@ -173,7 +181,10 @@ export default function CalibrationBox({ hailer, workflows, onAdd }: Props) {
       years,
     }));
     const systemsSum = lines.reduce((s, l) => s + l.price, 0);
-    const remainder = quote.price - systemsSum; // travel + rounding pad
+    // travel + rounding pad, net of the POS discount — can go negative when the
+    // discount exceeds travel/rounding, which is fine: it just pulls the
+    // adjustment line below zero so the lines still sum to the discounted total.
+    const remainder = quote.price - systemsSum;
     if (quote.travel > 0) {
       lines.push({
         id: mkId(),
@@ -182,12 +193,13 @@ export default function CalibrationBox({ hailer, workflows, onAdd }: Props) {
         cost: quote.travel,
         years,
       });
-    } else if (remainder > 0 && lines.length > 0) {
-      // In-house (no travel): put the €100 rounding pad on the last service line.
+    } else if (lines.length > 0) {
+      // In-house (no travel): put the rounding pad / POS discount on the last service line.
       lines[lines.length - 1].price += remainder;
     }
     onAdd(lines);
     setSelectedSystems({});
+    setPosDiscountPct(0);
   }
 
   if (!calWorkflow || countries === null) {
@@ -314,11 +326,22 @@ export default function CalibrationBox({ hailer, workflows, onAdd }: Props) {
                   </Text>
                   <Text fontSize="sm">{formatMoney(quote.partsSell)}</Text>
                 </HStack>
+                <HStack justify="space-between">
+                  <Text fontSize="sm" color="subtleText">
+                    POS discount
+                  </Text>
+                  <EditablePercentCell value={posDiscountPct} onCommit={setPosDiscountPct} />
+                </HStack>
                 <Stat>
                   <StatLabel>Single Cal price</StatLabel>
                   <StatNumber fontSize="xl" color="green.500">
                     {formatMoney(quote.price)}
                   </StatNumber>
+                  {posDiscountPct > 0 && (
+                    <Text fontSize="xs" color="subtleText" textDecoration="line-through">
+                      {formatMoney(quote.listPrice)}
+                    </Text>
+                  )}
                 </Stat>
                 {years > 1 && (
                   <HStack justify="space-between">
