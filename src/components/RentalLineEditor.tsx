@@ -17,8 +17,9 @@ import {
 } from '@chakra-ui/react';
 import { Activity } from '@hailer/app-sdk';
 import { RentalUnitSummary } from '../types';
-import { RentalLine } from '../rentalLines';
-import { CUSTOMERS } from '../constants/schema';
+import { estimateRentalWeeks, RentalLine, tieredWeeklyRate } from '../rentalLines';
+import { CUSTOMERS, RENTAL_MONTHLY_RATE, RENTAL_SHORT_TERM_MAX_WEEKS, RENTAL_SHORT_TERM_WEEKLY_RATE } from '../constants/schema';
+import { formatMoney } from '../hailer/api-helpers';
 import SearchableSelect, { SelectOption } from './SearchableSelect';
 
 interface Props {
@@ -52,6 +53,20 @@ export default function RentalLineEditor({ line, unit, customers, onChange }: Pr
     onChange(next);
   }
 
+  // Weekly Rate auto-fills from the universal tiered schedule the moment both
+  // dates are set, and stays in sync as either date is adjusted — the rep
+  // never has to look up or type a rate. Still an editable NumberInput below
+  // for the rare negotiated exception, but re-selecting either date always
+  // recalculates it fresh (a stale manually-typed rate silently surviving a
+  // later date change would be worse than losing a one-off override).
+  function handleDateChange(key: 'startDate' | 'endDate', value: string) {
+    const next: RentalLine = { ...line, [key]: value };
+    const weeks = estimateRentalWeeks(next);
+    if (weeks != null) next.weeklyRate = String(tieredWeeklyRate(weeks));
+    onChange(next);
+  }
+
+  const weeks = estimateRentalWeeks(line);
   const isNotAvailable = unit?.status && unit.status !== 'Available';
 
   return (
@@ -99,13 +114,23 @@ export default function RentalLineEditor({ line, unit, customers, onChange }: Pr
         <GridItem>
           <FormControl isRequired>
             <FormLabel fontSize="sm">Rental Start Date</FormLabel>
-            <Input size="sm" type="date" value={line.startDate} onChange={(e) => set('startDate', e.target.value)} />
+            <Input
+              size="sm"
+              type="date"
+              value={line.startDate}
+              onChange={(e) => handleDateChange('startDate', e.target.value)}
+            />
           </FormControl>
         </GridItem>
         <GridItem>
           <FormControl isRequired>
             <FormLabel fontSize="sm">Return Due Date</FormLabel>
-            <Input size="sm" type="date" value={line.endDate} onChange={(e) => set('endDate', e.target.value)} />
+            <Input
+              size="sm"
+              type="date"
+              value={line.endDate}
+              onChange={(e) => handleDateChange('endDate', e.target.value)}
+            />
           </FormControl>
         </GridItem>
         <GridItem>
@@ -114,6 +139,11 @@ export default function RentalLineEditor({ line, unit, customers, onChange }: Pr
             <NumberInput size="sm" min={0} value={line.weeklyRate} onChange={(v) => set('weeklyRate', v)}>
               <NumberInputField />
             </NumberInput>
+            <Text fontSize="xs" color="subtleText" mt={1}>
+              {weeks != null
+                ? `Auto-filled for ${weeks} week${weeks === 1 ? '' : 's'} at ${formatMoney(tieredWeeklyRate(weeks))}/week — edit to override.`
+                : `Auto-fills once both dates are set: ${formatMoney(RENTAL_SHORT_TERM_WEEKLY_RATE)}/week for the first ${RENTAL_SHORT_TERM_MAX_WEEKS} weeks, then ${formatMoney(RENTAL_MONTHLY_RATE)}/month (${formatMoney(RENTAL_MONTHLY_RATE / 4)}/week) from week ${RENTAL_SHORT_TERM_MAX_WEEKS + 1} on.`}
+            </Text>
           </FormControl>
         </GridItem>
         <GridItem>

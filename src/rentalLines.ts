@@ -1,3 +1,9 @@
+import {
+  RENTAL_MONTHLY_RATE,
+  RENTAL_SHORT_TERM_MAX_WEEKS,
+  RENTAL_SHORT_TERM_WEEKLY_RATE,
+} from './constants/schema';
+
 // A rental being built in the Rental tab — one per fleet unit added. Kept
 // entirely separate from ConfigLine/pricing.ts: a rental isn't a priced quote
 // line, it's a draft of an activity to be created directly in the Rentals
@@ -57,6 +63,18 @@ export function estimateRentalWeeks(line: RentalLine): number | null {
   if (!start || !end || end <= start) return null;
   const days = (end - start) / 86400000;
   return Math.ceil(days / 7);
+}
+
+// Universal weekly rate for a given rental duration — same schedule for every
+// unit (Newton and ACE alike). See the constant comments in schema.ts for the
+// full explanation of the tier/cliff. RentalLineEditor calls this to
+// auto-fill (and keep in sync with) RentalLine.weeklyRate the moment both
+// dates are selected — the rep never has to look up or type a rate manually.
+export function tieredWeeklyRate(weeks: number): number {
+  if (weeks <= 0) return 0;
+  return weeks <= RENTAL_SHORT_TERM_MAX_WEEKS
+    ? RENTAL_SHORT_TERM_WEEKLY_RATE
+    : RENTAL_MONTHLY_RATE / 4;
 }
 
 export function estimateRentalRevenue(line: RentalLine): number | null {

@@ -267,6 +267,20 @@ export const RENTALS_FIELDS = {
 // are separate, pass-through/one-time charges, not part of "the rental fee."
 export const RENTAL_PURCHASE_CREDIT_PCT = 0.2;
 
+// Universal weekly rental rate schedule — same for every unit (Newton and ACE
+// alike, confirmed business decision, not per-product). NOT a flat weekly
+// rate: 1-3 weeks bills at RENTAL_SHORT_TERM_WEEKLY_RATE; from week 4 on, the
+// ENTIRE rental bills at the monthly-equivalent rate (RENTAL_MONTHLY_RATE / 4)
+// — a deliberate cliff, not a blend, so a 4-week rental (€19,500) actually
+// costs less than 3 weeks (€24,000): it nudges the customer toward booking a
+// full month once they're close to one anyway. Reverse-engineered from the
+// reference schedule (weeks -> total €): 1:8000 2:16000 3:24000 4:19500
+// 5:24375 6:29250 7:34125 8:39000 9:43875 10:48750 11:53625 12:58500
+// 13:63375 14:68250 15:73125 16:78000 — see tieredWeeklyRate in rentalLines.ts.
+export const RENTAL_SHORT_TERM_WEEKLY_RATE = 8000;
+export const RENTAL_SHORT_TERM_MAX_WEEKS = 3;
+export const RENTAL_MONTHLY_RATE = 19500;
+
 // Rental Fleet — flat dataset (enableUnlinkedMode: true) but still has one phase.
 export const RENTAL_FLEET_PHASE = '6a99429d65a81755cf3190e5';
 

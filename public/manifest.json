@@ -2,8 +2,8 @@
   "author": "TMRX",
   "appId": "6a686250ecb3aa66f7e12b14",
   "description": "Configure a product from the Price List catalog, generate a customer quote, push parts to a Work Order, or start a Rental.",
-  "version": "3.26.9",
-  "versionDescription": "Incoterms now defaults to DAP on a new quote instead of blank — same pattern as the existing HS Code default. Still fully editable per quote.",
+  "version": "3.26.10",
+  "versionDescription": "Restored the Rental tab's by-week rate calculation, which had been missing from the recovered v3.11.1 base. Weekly Rate now auto-fills the moment both Start/Return dates are picked, using the universal tiered schedule (same for Newton and ACE): €8,000/week for the first 3 weeks, then €19,500/month (€4,875/week) from week 4 on — a deliberate cliff, not a blend, so a 4-week rental costs less than 3 weeks. Recalculates automatically whenever either date changes; still an editable field for the rare negotiated exception. Verified against the full reference schedule (weeks 1-16) before publishing — every value matches exactly.",
   "config": {
     "fields": {
       "workflowId": {
