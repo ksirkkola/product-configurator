@@ -35,7 +35,7 @@ export const EMPTY_QUOTE_DETAILS: QuoteDetails = {
   agentId: null,
   shipTo: '',
   finalDestinationCountry: '',
-  incoterms: '',
+  incoterms: 'DAP',
   hsCode: '9027.89', // default per FECSA quote template — override per quote if needed
   proposalReference: '',
   internalReference: '',

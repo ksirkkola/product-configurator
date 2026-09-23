@@ -2,8 +2,8 @@
   "author": "TMRX",
   "appId": "6a686250ecb3aa66f7e12b14",
   "description": "Configure a product from the Price List catalog, generate a customer quote, push parts to a Work Order, or start a Rental.",
-  "version": "3.26.8",
-  "versionDescription": "Shipping is now commission-exempt, same as ISO Certification, Startup, and Calibration — agent commission % no longer gets added on top of freight/crating costs. Added ITEM_TYPE.SHIPPING to COMMISSION_EXEMPT_TYPES in constants/schema.ts.",
+  "version": "3.26.9",
+  "versionDescription": "Incoterms now defaults to DAP on a new quote instead of blank — same pattern as the existing HS Code default. Still fully editable per quote.",
   "config": {
     "fields": {
       "workflowId": {
