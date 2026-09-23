@@ -2,8 +2,8 @@
   "author": "TMRX",
   "appId": "6a686250ecb3aa66f7e12b14",
   "description": "Configure a product from the Price List catalog, generate a customer quote, push parts to a Work Order, or start a Rental.",
-  "version": "3.26.5",
-  "versionDescription": "Correction to v3.26.4: 'POS Discount (%)' in bold orange is Calibration Options only — every other section (Base Product, Standard/Custom Options, Startup) reverted back to plain 'Discount (%)', exactly as before. Kept from v3.26.4: on the downloaded PDF, a section's discount rows are omitted entirely when its discount is 0% (applies to all sections, not just Calibration) — on-screen the editable field still always stays visible.",
+  "version": "3.26.6",
+  "versionDescription": "PDF-only: Custom System Options and Customization sections are now skipped entirely (no header, no '—' placeholder, no subtotal row) when nothing was selected/written for them — was just blank space on the printed quote. ISO Certification still always shows its explicit 'Not included' line, and Base Product/Standard Options are unaffected (never empty on a real quote). On-screen in the Quote tab, nothing changed — this only trims the downloaded PDF. Totals/math are unaffected either way.",
   "config": {
     "fields": {
       "workflowId": {

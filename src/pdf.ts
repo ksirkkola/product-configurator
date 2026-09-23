@@ -98,7 +98,16 @@ export function buildQuoteDocDefinition(input: QuotePdfInput): TDocumentDefiniti
 
   const body: TableCell[][] = [headerRow];
 
+  // Custom System Options and Customization are skipped entirely on the PDF
+  // when nothing was selected/written for them — unlike ISO Certification
+  // (which deliberately always shows "Not included" as an explicit legal
+  // statement) or Base Product/Standard Options (which are never empty on a
+  // real quote), an empty Custom Options or Customization section is just
+  // blank space nobody needs to see on a printed quote.
+  const SKIP_WHEN_EMPTY_PDF: string[] = [ITEM_TYPE.CUSTOM_OPTION, ITEM_TYPE.CUSTOMIZATION];
+
   for (const { section, lines, discountable, discountPct, discountAmount, netSubtotal } of systemPriceSections) {
+    if (lines.length === 0 && SKIP_WHEN_EMPTY_PDF.includes(section.type)) continue;
     body.push(sectionHeaderRow(section.label));
     if (lines.length === 0) {
       body.push([{ text: section.type === ITEM_TYPE.ISO_CERTIFICATION ? 'Not included' : '—', colSpan: 7, italics: true, color: '#718096' }, {}, {}, {}, {}, {}, {}]);
