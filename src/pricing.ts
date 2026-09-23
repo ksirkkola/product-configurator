@@ -35,7 +35,7 @@ export interface Totals {
 }
 
 // Agent commission is added ON TOP of list price: final = price * (1 + pct/100).
-// ISO 17025 Certification, Startup, and Calibration lines are commission-EXEMPT:
+// ISO 17025 Certification, Startup, Calibration, and Shipping lines are commission-EXEMPT:
 // agents get no cut of service/pass-through work, so those lines carry their
 // flat price (see COMMISSION_EXEMPT_TYPES).
 // Margin follows the price sheet's GM NET = (price - cost) / price, on list price

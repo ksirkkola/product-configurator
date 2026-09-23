@@ -137,6 +137,7 @@ export const COMMISSION_EXEMPT_TYPES: string[] = [
   ITEM_TYPE.ISO_CERTIFICATION,
   ITEM_TYPE.STARTUP,
   ITEM_TYPE.CALIBRATION,
+  ITEM_TYPE.SHIPPING,
 ];
 
 // Items in these sections have no fixed catalog price (PRF) — they're always

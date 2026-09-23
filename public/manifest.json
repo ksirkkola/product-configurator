@@ -2,8 +2,8 @@
   "author": "TMRX",
   "appId": "6a686250ecb3aa66f7e12b14",
   "description": "Configure a product from the Price List catalog, generate a customer quote, push parts to a Work Order, or start a Rental.",
-  "version": "3.26.7",
-  "versionDescription": "Rebuilt the PDF header (Account/Ship To/... and Date/Proposal Reference/... blocks) as a single aligned table instead of two independent side-by-side columns. The old layout let one side's wrapped multi-line values (a long address, an email) drift out of vertical sync with the other side, so unrelated labels and values visually ran into each other with no gap — confirmed from a screenshot. Now every row shares one height, there's a real gap between the two halves, and values are left-aligned so wrapped lines stay readable. Verified by rendering the exact data from the screenshot before publishing.",
+  "version": "3.26.8",
+  "versionDescription": "Shipping is now commission-exempt, same as ISO Certification, Startup, and Calibration — agent commission % no longer gets added on top of freight/crating costs. Added ITEM_TYPE.SHIPPING to COMMISSION_EXEMPT_TYPES in constants/schema.ts.",
   "config": {
     "fields": {
       "workflowId": {
