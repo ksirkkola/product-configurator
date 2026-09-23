@@ -1,6 +1,6 @@
 import { Box, Divider, Stat, StatGroup, StatLabel, StatNumber, Text, VStack } from '@chakra-ui/react';
 import { formatMoney } from '../hailer/api-helpers';
-import { RentalLine, estimateInvoiceTotal, estimateRentalRevenue } from '../rentalLines';
+import { cleaningAndCalibrationDue, RentalLine, estimateInvoiceTotal, estimateRentalRevenue } from '../rentalLines';
 import { RENTAL_PURCHASE_CREDIT_PCT } from '../constants/schema';
 
 interface Props {
@@ -8,10 +8,10 @@ interface Props {
 }
 
 export default function RentalSummaryPanel({ lines }: Props) {
-  const totalWeeklyRate = lines.reduce((s, l) => s + (Number(l.weeklyRate) || 0), 0);
-  const totalDeposit = lines.reduce((s, l) => s + (Number(l.deposit) || 0), 0);
   const totalStartupFees = lines.reduce((s, l) => s + (Number(l.startupFee) || 0), 0);
-  const totalShipping = lines.reduce((s, l) => s + (Number(l.shippingCost) || 0), 0);
+  const totalFreightDelivery = lines.reduce((s, l) => s + (Number(l.freightDelivery) || 0), 0);
+  const totalFreightReturn = lines.reduce((s, l) => s + (Number(l.freightReturn) || 0), 0);
+  const totalCleaningAndCalibration = lines.reduce((s, l) => s + cleaningAndCalibrationDue(l), 0);
 
   const revenues = lines.map(estimateRentalRevenue);
   const knownRevenues = revenues.filter((r): r is number => r != null);
@@ -34,13 +34,6 @@ export default function RentalSummaryPanel({ lines }: Props) {
 
         <StatGroup>
           <Stat>
-            <StatLabel>Total weekly rate</StatLabel>
-            <StatNumber fontSize="lg">{formatMoney(totalWeeklyRate)}</StatNumber>
-          </Stat>
-        </StatGroup>
-
-        <StatGroup>
-          <Stat>
             <StatLabel>Est. rental fee</StatLabel>
             <StatNumber fontSize="lg">{formatMoney(totalRentalFee)}</StatNumber>
           </Stat>
@@ -48,22 +41,26 @@ export default function RentalSummaryPanel({ lines }: Props) {
 
         <StatGroup>
           <Stat>
-            <StatLabel>Total startup fees</StatLabel>
+            <StatLabel>Total setup and training</StatLabel>
             <StatNumber fontSize="lg">{formatMoney(totalStartupFees)}</StatNumber>
           </Stat>
         </StatGroup>
 
         <StatGroup>
           <Stat>
-            <StatLabel>Total shipping</StatLabel>
-            <StatNumber fontSize="lg">{formatMoney(totalShipping)}</StatNumber>
+            <StatLabel>Total freight delivery</StatLabel>
+            <StatNumber fontSize="lg">{formatMoney(totalFreightDelivery)}</StatNumber>
+          </Stat>
+          <Stat>
+            <StatLabel>Total freight return</StatLabel>
+            <StatNumber fontSize="lg">{formatMoney(totalFreightReturn)}</StatNumber>
           </Stat>
         </StatGroup>
 
         <StatGroup>
           <Stat>
-            <StatLabel>Total deposit</StatLabel>
-            <StatNumber fontSize="lg">{formatMoney(totalDeposit)}</StatNumber>
+            <StatLabel>Total cleaning and calibration</StatLabel>
+            <StatNumber fontSize="lg">{formatMoney(totalCleaningAndCalibration)}</StatNumber>
           </Stat>
         </StatGroup>
 
@@ -76,7 +73,8 @@ export default function RentalSummaryPanel({ lines }: Props) {
               {formatMoney(totalInvoice)}
             </StatNumber>
             <Text fontSize="xs" color="subtleText" mt={1}>
-              Rental fee + startup + shipping (deposit is refundable, not included).
+              Rental fee + setup/training + freight delivery + freight return + cleaning and calibration (net of any
+              waivers).
             </Text>
           </Stat>
         </StatGroup>

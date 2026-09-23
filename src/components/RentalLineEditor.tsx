@@ -3,6 +3,7 @@ import {
   AlertIcon,
   Badge,
   Box,
+  Checkbox,
   FormControl,
   FormLabel,
   Grid,
@@ -135,7 +136,7 @@ export default function RentalLineEditor({ line, unit, customers, onChange }: Pr
         </GridItem>
         <GridItem>
           <FormControl>
-            <FormLabel fontSize="sm">Weekly Rate (€)</FormLabel>
+            <FormLabel fontSize="sm">Rental Fee for Desired Time Length (€/week)</FormLabel>
             <NumberInput size="sm" min={0} value={line.weeklyRate} onChange={(v) => set('weeklyRate', v)}>
               <NumberInputField />
             </NumberInput>
@@ -148,31 +149,60 @@ export default function RentalLineEditor({ line, unit, customers, onChange }: Pr
         </GridItem>
         <GridItem>
           <FormControl>
-            <FormLabel fontSize="sm">Deposit (€)</FormLabel>
-            <NumberInput size="sm" min={0} value={line.deposit} onChange={(v) => set('deposit', v)}>
-              <NumberInputField />
-            </NumberInput>
-          </FormControl>
-        </GridItem>
-        <GridItem>
-          <FormControl>
-            <FormLabel fontSize="sm">Startup Fee (€)</FormLabel>
+            <FormLabel fontSize="sm">Setup and Training (€)</FormLabel>
             <NumberInput size="sm" min={0} value={line.startupFee} onChange={(v) => set('startupFee', v)}>
               <NumberInputField />
             </NumberInput>
             <Text fontSize="xs" color="subtleText" mt={1}>
-              One-time on-site setup / training — separate from the weekly rate.
+              One-time on-site setup / training — separate from the rental fee.
             </Text>
           </FormControl>
         </GridItem>
         <GridItem>
           <FormControl>
-            <FormLabel fontSize="sm">Shipping Cost (€)</FormLabel>
-            <NumberInput size="sm" min={0} value={line.shippingCost} onChange={(v) => set('shippingCost', v)}>
+            <FormLabel fontSize="sm">Freight Delivery (€)</FormLabel>
+            <NumberInput size="sm" min={0} value={line.freightDelivery} onChange={(v) => set('freightDelivery', v)}>
               <NumberInputField />
             </NumberInput>
             <Text fontSize="xs" color="subtleText" mt={1}>
-              Airfreight / ground shipping — billed at cost.
+              Shipping to deliver this unit to the customer — billed at cost.
+            </Text>
+          </FormControl>
+        </GridItem>
+        <GridItem>
+          <FormControl>
+            <FormLabel fontSize="sm">Freight Return (€)</FormLabel>
+            <NumberInput size="sm" min={0} value={line.freightReturn} onChange={(v) => set('freightReturn', v)}>
+              <NumberInputField />
+            </NumberInput>
+            <Text fontSize="xs" color="subtleText" mt={1}>
+              Shipping to return this unit once the rental ends — billed at cost.
+            </Text>
+          </FormControl>
+        </GridItem>
+        <GridItem>
+          <FormControl>
+            <FormLabel fontSize="sm">Cleaning and Calibration (€)</FormLabel>
+            <NumberInput
+              size="sm"
+              min={0}
+              value={line.cleaningAndCalibration}
+              onChange={(v) => set('cleaningAndCalibration', v)}
+              isDisabled={line.cleaningAndCalibrationWaived}
+            >
+              <NumberInputField />
+            </NumberInput>
+            <Checkbox
+              size="sm"
+              mt={2}
+              isChecked={line.cleaningAndCalibrationWaived}
+              onChange={(e) => set('cleaningAndCalibrationWaived', e.target.checked)}
+            >
+              Waive this fee for this rental
+            </Checkbox>
+            <Text fontSize="xs" color="subtleText" mt={1}>
+              One-time fee for cleaning and recalibrating the unit. Defaults to the standard rate — waived rentals
+              still show the standard price on the contract, noted as waived.
             </Text>
           </FormControl>
         </GridItem>

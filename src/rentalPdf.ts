@@ -1,84 +1,152 @@
 import pdfMake from 'pdfmake/build/pdfmake';
-import vfsFonts from 'pdfmake/build/vfs_fonts';
 import type { TDocumentDefinitions, TableCell } from 'pdfmake/interfaces';
 import { formatMoney } from './hailer/api-helpers';
-import { RentalLine, estimateInvoiceTotal, estimateRentalRevenue, estimateRentalWeeks } from './rentalLines';
+import {
+  RentalLine,
+  cleaningAndCalibrationDue,
+  estimateRentalRevenue,
+  estimateRentalWeeks,
+} from './rentalLines';
 import { RentalUnitSummary } from './types';
-import { QuoteDetails } from './components/QuoteDetailsBox';
-import { RENTAL_PURCHASE_CREDIT_PCT } from './constants/schema';
+import { RentalDetails } from './components/RentalDetailsBox';
 import { THERMETRICS_LOGO } from './assets/logo';
+import { ensurePdfFonts, infoTable } from './pdfHelpers';
 
-let fontsRegistered = false;
-function ensureFonts() {
-  if (fontsRegistered) return;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (pdfMake as any).addVirtualFileSystem(vfsFonts);
-  fontsRegistered = true;
-}
-
-interface RentalQuotePdfInput {
+interface RentalContractPdfInput {
   lines: RentalLine[];
   units: RentalUnitSummary[];
-  details: QuoteDetails;
+  rentalDetails: RentalDetails;
   accountName?: string;
+  shipTo?: string;
   contactName?: string;
   contactEmail?: string;
-  contactPhone?: string;
 }
 
 function fmtDate(v: string): string {
   return v ? new Date(v).toLocaleDateString() : '—';
 }
 
-function infoRows(rows: [string, string | undefined][]) {
-  return rows
-    .filter(([, value]) => !!value)
-    .map(([label, value]) => ({
-      columns: [
-        { text: label, color: '#718096', fontSize: 9, width: '55%' },
-        { text: value as string, fontSize: 9, bold: true, alignment: 'right' as const, width: '45%' },
-      ],
-      margin: [0, 1, 0, 1] as [number, number, number, number],
-    }));
+function unitLabel(line: RentalLine, units: RentalUnitSummary[]): string {
+  const unit = units.find((u) => u._id === line.unitId);
+  const base = unit?.productFamily || unit?.name || 'Unit';
+  return unit?.serialNumber ? `${base} (S/N ${unit.serialNumber})` : base;
 }
 
-export function buildRentalQuoteDocDefinition(input: RentalQuotePdfInput): TDocumentDefinitions {
-  const { lines, units, details, accountName, contactName, contactEmail, contactPhone } = input;
+function sectionHeaderRow(label: string): TableCell[] {
+  return [{ text: label.toUpperCase(), colSpan: 3, bold: true, fontSize: 8, fillColor: '#f0f0f0' }, {}, {}];
+}
 
-  const headerRow: TableCell[] = [
-    'Unit', 'Start Date', 'Return Due', 'Weekly Rate', 'Est. Weeks', 'Est. Rental Fee', 'Startup Fee', 'Shipping', 'Deposit', 'Est. Total',
-  ];
-  const body: TableCell[][] = [headerRow];
+function subtotalRow(value: string): TableCell[] {
+  return [{ text: '', colSpan: 1 }, { text: 'Subtotal', bold: true, alignment: 'right', fontSize: 9 }, { text: value, bold: true, fontSize: 9 }];
+}
 
-  let totalDeposit = 0;
-  let totalRentalFee = 0;
-  let totalInvoice = 0;
-  let allKnown = true;
-
-  for (const line of lines) {
-    const unit = units.find((u) => u._id === line.unitId);
-    const weeks = estimateRentalWeeks(line);
-    const revenue = estimateRentalRevenue(line);
-    const invoiceTotal = estimateInvoiceTotal(line);
-    if (revenue == null) allKnown = false;
-    totalDeposit += Number(line.deposit) || 0;
-    totalRentalFee += revenue ?? 0;
-    totalInvoice += invoiceTotal ?? 0;
-    body.push([
-      `${unit?.productFamily || unit?.name || 'Unit'}${unit?.serialNumber ? ` (${unit.serialNumber})` : ''}`,
-      fmtDate(line.startDate),
-      fmtDate(line.endDate),
-      line.weeklyRate ? formatMoney(Number(line.weeklyRate)) : '—',
-      weeks != null ? String(weeks) : '—',
-      revenue != null ? formatMoney(revenue) : '—',
-      line.startupFee ? formatMoney(Number(line.startupFee)) : '—',
-      line.shippingCost ? formatMoney(Number(line.shippingCost)) : '—',
-      line.deposit ? formatMoney(Number(line.deposit)) : '—',
-      invoiceTotal != null ? formatMoney(invoiceTotal) : '—',
-    ]);
+// Builds one section of the Rental Contract's item table (Item # | Description
+// | Amount), one row per unit that has a nonzero amount for this charge type.
+// `alwaysShow` sections (Rental Fee, Cleaning and Calibration) list every
+// unit even at €0/waived; other sections collapse to "Not included" when no
+// unit has anything to bill.
+function buildSection(
+  itemNumberRef: { n: number },
+  label: string,
+  lines: RentalLine[],
+  rowFor: (line: RentalLine) => { desc: TableCell; amount: number; amountText?: string } | null,
+  alwaysShow: boolean,
+): TableCell[][] {
+  const rows = lines.map(rowFor).filter((r): r is NonNullable<typeof r> => r != null && (alwaysShow || r.amount > 0));
+  const body: TableCell[][] = [sectionHeaderRow(label)];
+  if (rows.length === 0) {
+    body.push([{ text: 'Not included', colSpan: 3, italics: true, color: '#718096' }, {}, {}]);
+    return body;
   }
+  let total = 0;
+  for (const row of rows) {
+    itemNumberRef.n += 1;
+    total += row.amount;
+    body.push([String(itemNumberRef.n), row.desc, row.amountText ?? formatMoney(row.amount)]);
+  }
+  body.push(subtotalRow(formatMoney(total)));
+  return body;
+}
 
-  const purchaseCredit = totalRentalFee * RENTAL_PURCHASE_CREDIT_PCT;
+export function buildRentalContractDocDefinition(input: RentalContractPdfInput): TDocumentDefinitions {
+  const { lines, units, rentalDetails, accountName, shipTo, contactName, contactEmail } = input;
+
+  const itemNumberRef = { n: 0 };
+  const body: TableCell[][] = [['Item', 'Description', 'Amount']];
+
+  buildSection(
+    itemNumberRef,
+    'Rental Fee',
+    lines,
+    (line) => {
+      const weeks = estimateRentalWeeks(line);
+      const revenue = estimateRentalRevenue(line);
+      return {
+        desc: {
+          stack: [
+            { text: `${unitLabel(line, units)} — ${fmtDate(line.startDate)} – ${fmtDate(line.endDate)}` },
+            ...(weeks != null ? [{ text: `${weeks} week${weeks === 1 ? '' : 's'}`, fontSize: 8, color: '#718096' }] : []),
+          ],
+        },
+        amount: revenue ?? 0,
+        amountText: revenue != null ? formatMoney(revenue) : '—',
+      };
+    },
+    true,
+  ).forEach((r) => body.push(r));
+
+  buildSection(
+    itemNumberRef,
+    'Setup and Training',
+    lines,
+    (line) => ({ desc: unitLabel(line, units), amount: Number(line.startupFee) || 0 }),
+    false,
+  ).forEach((r) => body.push(r));
+
+  buildSection(
+    itemNumberRef,
+    'Freight Delivery',
+    lines,
+    (line) => ({ desc: unitLabel(line, units), amount: Number(line.freightDelivery) || 0 }),
+    false,
+  ).forEach((r) => body.push(r));
+
+  buildSection(
+    itemNumberRef,
+    'Freight Return',
+    lines,
+    (line) => ({ desc: unitLabel(line, units), amount: Number(line.freightReturn) || 0 }),
+    false,
+  ).forEach((r) => body.push(r));
+
+  buildSection(
+    itemNumberRef,
+    'Cleaning and Calibration',
+    lines,
+    (line) => {
+      const listPrice = Number(line.cleaningAndCalibration) || 0;
+      const due = cleaningAndCalibrationDue(line);
+      return {
+        desc: unitLabel(line, units),
+        amount: due,
+        amountText: line.cleaningAndCalibrationWaived ? `${formatMoney(listPrice)} (waived for this rental)` : undefined,
+      };
+    },
+    true,
+  ).forEach((r) => body.push(r));
+
+  const grandTotal = lines.reduce((s, line) => {
+    const revenue = estimateRentalRevenue(line) ?? 0;
+    const startup = Number(line.startupFee) || 0;
+    const freightDelivery = Number(line.freightDelivery) || 0;
+    const freightReturn = Number(line.freightReturn) || 0;
+    const cleaning = cleaningAndCalibrationDue(line);
+    return s + revenue + startup + freightDelivery + freightReturn + cleaning;
+  }, 0);
+
+  function responsibilityRow(label: string, value: string): TableCell[] {
+    return [{ text: label, color: '#718096', fontSize: 9 }, { text: value || '—', bold: true, fontSize: 9, alignment: 'right' }];
+  }
 
   const docDefinition: TDocumentDefinitions = {
     pageSize: 'A4',
@@ -87,34 +155,27 @@ export function buildRentalQuoteDocDefinition(input: RentalQuotePdfInput): TDocu
     content: [
       {
         columns: [
-          { text: 'Rental Quote', fontSize: 20, bold: true },
+          { text: 'Rental Contract', fontSize: 20, bold: true },
           { image: THERMETRICS_LOGO, width: 150, alignment: 'right' as const },
         ],
         margin: [0, 0, 0, 10],
       },
-      {
-        columns: [
-          {
-            width: '50%',
-            stack: infoRows([
-              ['Account', accountName],
-              ['Ship To', details.shipTo],
-              ['Contact', contactName],
-              ['Email', contactEmail],
-              ['Phone #', contactPhone],
-            ]),
-          },
-          {
-            width: '50%',
-            stack: infoRows([['Date', new Date().toLocaleDateString()]]),
-          },
+      infoTable(
+        [
+          ['Account', accountName],
+          ['Ship To', shipTo],
+          ['Contact', contactName],
+          ['Email', contactEmail],
         ],
-        margin: [0, 0, 0, 15],
-      },
+        [
+          ['Date', new Date().toLocaleDateString()],
+          ['Contract Reference #', rentalDetails.contractReference],
+        ],
+      ),
       {
         table: {
           headerRows: 1,
-          widths: ['*', 'auto', 'auto', 'auto', 'auto', 'auto', 'auto', 'auto', 'auto', 'auto'],
+          widths: ['auto', '*', 'auto'],
           body,
         },
         layout: {
@@ -122,63 +183,38 @@ export function buildRentalQuoteDocDefinition(input: RentalQuotePdfInput): TDocu
         },
       },
       {
-        text: `Total Deposit: ${formatMoney(totalDeposit)}`,
-        fontSize: 10,
-        alignment: 'right',
-        margin: [0, 10, 0, 0],
-      },
-      {
-        text: `Est. Total to Invoice: ${formatMoney(totalInvoice)}`,
+        text: `Est. Total to Invoice: ${formatMoney(grandTotal)}`,
         bold: true,
         fontSize: 13,
         alignment: 'right',
-        margin: [0, 4, 0, 0],
+        margin: [0, 15, 0, 0],
       },
       {
-        text: 'Rental fee + startup + shipping (deposit excluded \u2014 refundable, not revenue).',
-        fontSize: 8,
-        color: '#718096',
-        alignment: 'right',
-        margin: [0, 2, 0, 0],
-      },
-      ...(!allKnown
-        ? [
-            {
-              text: 'Some units are missing a weekly rate or date range and are excluded from the estimate above.',
-              color: '#dd6b20',
-              fontSize: 8,
-              alignment: 'right' as const,
-              margin: [0, 2, 0, 0] as [number, number, number, number],
-            },
-          ]
-        : []),
-      {
-        text: 'Rental Terms:',
+        text: 'Shipping Responsibility',
         bold: true,
-        margin: [0, 15, 0, 3],
+        margin: [0, 20, 0, 6],
       },
-      { text: 'Deposit due at rental agreement; refunded on return subject to condition inspection.', fontSize: 8, color: '#718096' },
-      { text: 'Weekly rate billed for each week or part-week the unit is out, rounded up to the nearest full week.', fontSize: 8, color: '#718096' },
-      { text: 'Startup / training and shipping are one-time charges, billed separately from the weekly rate.', fontSize: 8, color: '#718096' },
-      ...(purchaseCredit > 0
-        ? [
-            {
-              text: `${RENTAL_PURCHASE_CREDIT_PCT * 100}% of the rental fee (${formatMoney(purchaseCredit)}) will be credited against the purchase price if the customer later decides to buy instead of renting.`,
-              fontSize: 8,
-              color: '#718096',
-            },
-          ]
-        : []),
-      { text: 'Estimated total is not final — actual total depends on the unit\u2019s real return date.', fontSize: 8, color: '#718096' },
+      {
+        table: {
+          widths: ['*', 200],
+          body: [
+            responsibilityRow('Delivery Freight', rentalDetails.deliveryFreightResponsibility),
+            responsibilityRow('Return Freight', rentalDetails.returnFreightResponsibility),
+            responsibilityRow('Insurance During Transportation', rentalDetails.insuranceDuringTransportation),
+            responsibilityRow('Applicable Delivery Terms / Incoterms', rentalDetails.applicableDeliveryTerms),
+          ],
+        },
+        layout: 'noBorders',
+      },
     ],
   };
 
   return docDefinition;
 }
 
-export function generateRentalQuotePdf(input: RentalQuotePdfInput): void {
-  ensureFonts();
-  const docDefinition = buildRentalQuoteDocDefinition(input);
+export function generateRentalContractPdf(input: RentalContractPdfInput): void {
+  ensurePdfFonts();
+  const docDefinition = buildRentalContractDocDefinition(input);
   const filenameParts = [input.accountName].filter(Boolean).join(' - ');
-  pdfMake.createPdf(docDefinition).download(`Rental Quote${filenameParts ? ` - ${filenameParts}` : ''}.pdf`);
+  pdfMake.createPdf(docDefinition).download(`Rental Contract${filenameParts ? ` - ${filenameParts}` : ''}.pdf`);
 }

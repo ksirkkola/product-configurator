@@ -246,25 +246,52 @@ export const CONTACTS = {
 // keys, resolve via field resolver.
 export const RENTALS_DISCOVERY_PHASE = '6a99429b65a81755cf3190ce';
 
+// Field keys verified directly against the live Rentals workflow schema
+// (workspace/rentals_.../fields.ts) — several of these keys' LABELS have
+// changed since the app was first built (the key stays put, Hailer lets you
+// relabel freely), which is exactly what caused a real bug here: this app
+// was still treating 'weekly_rate' as a per-week rate to multiply, but its
+// current label/description is "Rental Fee for Desired Time Length" — Hailer
+// expects the field to already hold the TOTAL fee for the whole rental
+// period. Similarly 'shipping_cost' is now labeled "Freight Return"
+// specifically (there's a separate "Freight Delivery" field this app never
+// wrote to), and there is NO 'deposit' field on the workflow at all — it was
+// a leftover from an early prototype, never a real field to push to.
 export const RENTALS_FIELDS = {
   customer: 'customer',
   rentalUnit: 'rental_unit',
   rentalStartDate: 'rental_start_date',
   rentalEndDate: 'rental_end_date', // label "Return Due Date"
-  weeklyRate: 'weekly_rate',
-  deposit: 'deposit',
-  startupFee: 'startup_fee', // one-time on-site setup/training — separate from Weekly Rate
-  shippingCost: 'shipping_cost', // billed at cost, not a fixed catalog rate
+  rentalFeeTotal: 'weekly_rate', // label "Rental Fee for Desired Time Length" — holds the TOTAL fee, not a per-week rate
+  startupFee: 'startup_fee', // label "Setup and Training" — one-time on-site setup/training
+  freightReturn: 'shipping_cost', // label "Freight Return" — billed at cost, not a fixed catalog rate
+  freightDelivery: 'freight_delivery', // label "Freight Delivery" — billed at cost, not a fixed catalog rate
+  cleaningAndCalibration: 'cleaning_and_calibration', // one-time fee, waivable per rental
   shipTo: 'ship_to',
   poReference: 'po_reference',
   notes: 'notes',
+  deliveryFreightResponsibility: 'delivery_freight_responsibility',
+  returnFreightResponsibility: 'return_freight_responsibility',
+  insuranceDuringTransportation: 'insurance_during_transportation',
+  applicableDeliveryTerms: 'applicable_delivery_terms',
 } as const;
+
+// Options for the three "Shipping Responsibility" dropdowns (Delivery Freight,
+// Return Freight, Insurance During Transportation) — Applicable Delivery
+// Terms/Incoterms reuses the full INCOTERMS list instead.
+export const RENTAL_SHIPPING_RESPONSIBILITY_OPTIONS = ['Company Arranged', 'Customer Arranged'];
+
+// Standard one-time fee for cleaning/recalibrating a unit in connection with
+// a rental — universal across units (same "one company-wide number" pattern
+// as the weekly rate schedule below), waivable per rental via a checkbox.
+export const RENTAL_CLEANING_CALIBRATION_FEE = 2000;
 
 // Per the Newton Rental Package reference doc: "20% of the total rental fee
 // will be credited against the purchase price of a new [...] system" if the
 // customer later decides to buy instead of just renting. Applies to the
-// recurring rental fee only (weekly rate x weeks) — Startup Fee and Shipping
-// are separate, pass-through/one-time charges, not part of "the rental fee."
+// recurring rental fee only (Rental Fee for Desired Time Length) — Setup and
+// Training, Freight, and Cleaning and Calibration are separate, pass-through
+// or one-time charges, not part of "the rental fee."
 export const RENTAL_PURCHASE_CREDIT_PCT = 0.2;
 
 // Universal weekly rental rate schedule — same for every unit (Newton and ACE

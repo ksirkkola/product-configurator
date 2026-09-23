@@ -27,9 +27,10 @@ import {
   RENTALS_FIELDS,
 } from '../constants/schema';
 import { RentalUnitSummary } from '../types';
-import { RentalLine, newRentalLine, estimateRentalRevenue } from '../rentalLines';
+import { RentalLine, newRentalLine, estimateRentalRevenue, cleaningAndCalibrationDue } from '../rentalLines';
 import { QuoteDetails } from './QuoteDetailsBox';
 import RentalCatalogPicker from './RentalCatalogPicker';
+import RentalDetailsBox, { EMPTY_RENTAL_DETAILS, RentalDetails } from './RentalDetailsBox';
 import RentalLineEditor from './RentalLineEditor';
 import RentalQuoteView from './RentalQuoteView';
 import RentalSummaryPanel from './RentalSummaryPanel';
@@ -48,6 +49,7 @@ export default function RentalPush({ hailer, workflows, customers, contacts, act
   const [units, setUnits] = useState<RentalUnitSummary[] | null>(null);
   const [lines, setLines] = useState<RentalLine[]>([]);
   const [activeLineId, setActiveLineId] = useState<string | null>(null);
+  const [rentalDetails, setRentalDetails] = useState<RentalDetails>(EMPTY_RENTAL_DETAILS);
   const [creating, setCreating] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null);
   const [showPreview, setShowPreview] = useState(false);
@@ -125,6 +127,13 @@ export default function RentalPush({ hailer, workflows, customers, contacts, act
         const unit = units?.find((u) => u._id === line.unitId);
         const account = customers.find((c) => c._id === line.accountId);
         const name = `Rental — ${unit?.productFamily || unit?.name || 'Unit'} — ${account?.name || 'TBD'}`.slice(0, 200);
+        // CRITICAL: "Rental Fee for Desired Time Length" holds the TOTAL fee
+        // for the period, not a per-week rate — push estimateRentalRevenue
+        // (rate x weeks), never Number(line.weeklyRate) directly. See the
+        // field's description in workspace/rentals_.../fields.ts and
+        // rentalLines.ts's estimateRentalRevenue doc comment.
+        const rentalFeeTotal = estimateRentalRevenue(line);
+        const cleaningDue = cleaningAndCalibrationDue(line);
         const fields: Record<string, ActivityFieldValue> = {
           [rentalsResolver(RENTALS_FIELDS.customer)]: line.accountId!,
           [rentalsResolver(RENTALS_FIELDS.rentalUnit)]: line.unitId,
@@ -132,10 +141,23 @@ export default function RentalPush({ hailer, workflows, customers, contacts, act
           [rentalsResolver(RENTALS_FIELDS.rentalEndDate)]: line.endDate,
           ...(line.shipTo ? { [rentalsResolver(RENTALS_FIELDS.shipTo)]: line.shipTo } : {}),
           ...(line.notes ? { [rentalsResolver(RENTALS_FIELDS.notes)]: line.notes } : {}),
-          ...(line.weeklyRate ? { [rentalsResolver(RENTALS_FIELDS.weeklyRate)]: Number(line.weeklyRate) } : {}),
-          ...(line.deposit ? { [rentalsResolver(RENTALS_FIELDS.deposit)]: Number(line.deposit) } : {}),
+          ...(rentalFeeTotal != null ? { [rentalsResolver(RENTALS_FIELDS.rentalFeeTotal)]: rentalFeeTotal } : {}),
           ...(line.startupFee ? { [rentalsResolver(RENTALS_FIELDS.startupFee)]: Number(line.startupFee) } : {}),
-          ...(line.shippingCost ? { [rentalsResolver(RENTALS_FIELDS.shippingCost)]: Number(line.shippingCost) } : {}),
+          ...(line.freightDelivery ? { [rentalsResolver(RENTALS_FIELDS.freightDelivery)]: Number(line.freightDelivery) } : {}),
+          ...(line.freightReturn ? { [rentalsResolver(RENTALS_FIELDS.freightReturn)]: Number(line.freightReturn) } : {}),
+          ...(line.cleaningAndCalibration ? { [rentalsResolver(RENTALS_FIELDS.cleaningAndCalibration)]: cleaningDue } : {}),
+          ...(rentalDetails.deliveryFreightResponsibility
+            ? { [rentalsResolver(RENTALS_FIELDS.deliveryFreightResponsibility)]: rentalDetails.deliveryFreightResponsibility }
+            : {}),
+          ...(rentalDetails.returnFreightResponsibility
+            ? { [rentalsResolver(RENTALS_FIELDS.returnFreightResponsibility)]: rentalDetails.returnFreightResponsibility }
+            : {}),
+          ...(rentalDetails.insuranceDuringTransportation
+            ? { [rentalsResolver(RENTALS_FIELDS.insuranceDuringTransportation)]: rentalDetails.insuranceDuringTransportation }
+            : {}),
+          ...(rentalDetails.applicableDeliveryTerms
+            ? { [rentalsResolver(RENTALS_FIELDS.applicableDeliveryTerms)]: rentalDetails.applicableDeliveryTerms }
+            : {}),
         };
         return { name, phaseId: RENTALS_DISCOVERY_PHASE, fields };
       });
@@ -151,6 +173,7 @@ export default function RentalPush({ hailer, workflows, customers, contacts, act
       setResult({ ok: true, message: `Created ${created.length} rental${created.length === 1 ? '' : 's'}.` });
       setLines([]);
       setActiveLineId(null);
+      setRentalDetails(EMPTY_RENTAL_DETAILS);
       setShowPreview(false);
     } catch (err) {
       setResult({ ok: false, message: formatHailerError(err) });
@@ -205,6 +228,13 @@ export default function RentalPush({ hailer, workflows, customers, contacts, act
         </Wrap>
       )}
 
+      <RentalDetailsBox
+        contacts={contacts}
+        activeAccountId={activeLine?.accountId ?? null}
+        details={rentalDetails}
+        onChange={setRentalDetails}
+      />
+
       {units.length === 0 ? (
         <Alert status="info" fontSize="sm" borderRadius="md">
           <AlertIcon />
@@ -254,7 +284,7 @@ export default function RentalPush({ hailer, workflows, customers, contacts, act
           isDisabled={lines.length === 0}
           onClick={() => setShowPreview((v) => !v)}
         >
-          {showPreview ? 'Hide' : 'Preview'} Rental Quote
+          {showPreview ? 'Hide' : 'Preview'} Rental Contract
         </Button>
         <Button
           colorScheme="green"
@@ -276,7 +306,13 @@ export default function RentalPush({ hailer, workflows, customers, contacts, act
       )}
 
       {showPreview && lines.length > 0 && (
-        <RentalQuoteView lines={lines} units={units} customers={customers} contacts={contacts} details={details} />
+        <RentalQuoteView
+          lines={lines}
+          units={units}
+          customers={customers}
+          contacts={contacts}
+          rentalDetails={rentalDetails}
+        />
       )}
     </VStack>
   );
