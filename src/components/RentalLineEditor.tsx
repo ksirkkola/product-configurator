@@ -16,42 +16,20 @@ import {
   Textarea,
   VStack,
 } from '@chakra-ui/react';
-import { Activity } from '@hailer/app-sdk';
 import { RentalUnitSummary } from '../types';
 import { estimateRentalWeeks, RentalLine, tieredWeeklyRate } from '../rentalLines';
-import { CUSTOMERS, RENTAL_MONTHLY_RATE, RENTAL_SHORT_TERM_MAX_WEEKS, RENTAL_SHORT_TERM_WEEKLY_RATE } from '../constants/schema';
+import { RENTAL_MONTHLY_RATE, RENTAL_SHORT_TERM_MAX_WEEKS, RENTAL_SHORT_TERM_WEEKLY_RATE } from '../constants/schema';
 import { formatMoney } from '../hailer/api-helpers';
-import SearchableSelect, { SelectOption } from './SearchableSelect';
 
 interface Props {
   line: RentalLine;
   unit: RentalUnitSummary | undefined;
-  customers: Activity[];
   onChange: (line: RentalLine) => void;
 }
 
-export default function RentalLineEditor({ line, unit, customers, onChange }: Props) {
-  const customerOptions: SelectOption[] = customers
-    .map((c) => ({ _id: c._id, name: c.name }))
-    .sort((a, b) => a.name.localeCompare(b.name));
-
+export default function RentalLineEditor({ line, unit, onChange }: Props) {
   function set<K extends keyof RentalLine>(key: K, value: RentalLine[K]) {
     onChange({ ...line, [key]: value });
-  }
-
-  // Mirrors QuoteDetailsBox.handleAccountChange: pull Ship To from the
-  // selected customer's address, but only fill it in — never overwrite
-  // something the rep already typed, and re-runs every time the Account
-  // changes (not just when the line is first created).
-  function handleAccountChange(id: string) {
-    const account = customers.find((c) => c._id === id);
-    const next: RentalLine = { ...line, accountId: id || null };
-    if (account && !line.shipTo) {
-      const street = (account.fields?.[CUSTOMERS.fields.streetAddress] as string) || '';
-      const city = (account.fields?.[CUSTOMERS.fields.city] as string) || '';
-      next.shipTo = [street, city].filter(Boolean).join(', ');
-    }
-    onChange(next);
   }
 
   // Weekly Rate auto-fills from the universal tiered schedule the moment both
@@ -91,27 +69,6 @@ export default function RentalLineEditor({ line, unit, customers, onChange }: Pr
       </Box>
 
       <Grid templateColumns={{ base: '1fr', md: 'repeat(2, 1fr)' }} gap={3}>
-        <GridItem>
-          <FormControl isRequired>
-            <FormLabel fontSize="sm">Account</FormLabel>
-            <SearchableSelect
-              value={line.accountId}
-              onChange={handleAccountChange}
-              options={customerOptions}
-              placeholder="Select customer…"
-              allowClear
-            />
-          </FormControl>
-        </GridItem>
-        <GridItem>
-          <FormControl>
-            <FormLabel fontSize="sm">Ship To</FormLabel>
-            <Input size="sm" value={line.shipTo} onChange={(e) => set('shipTo', e.target.value)} />
-            <Text fontSize="xs" color="subtleText" mt={1}>
-              Auto-filled from the Account's address — edit freely if this unit ships somewhere else.
-            </Text>
-          </FormControl>
-        </GridItem>
         <GridItem>
           <FormControl isRequired>
             <FormLabel fontSize="sm">Rental Start Date</FormLabel>
@@ -201,8 +158,9 @@ export default function RentalLineEditor({ line, unit, customers, onChange }: Pr
               Waive this fee for this rental
             </Checkbox>
             <Text fontSize="xs" color="subtleText" mt={1}>
-              One-time fee for cleaning and recalibrating the unit. Defaults to the standard rate — waived rentals
-              still show the standard price on the contract, noted as waived.
+              Already baked into the rental price — defaults to waived so the contract shows this as a gesture to
+              the customer, not an extra charge. The standard price still shows on the contract, noted as waived.
+              Untick to actually charge it instead.
             </Text>
           </FormControl>
         </GridItem>

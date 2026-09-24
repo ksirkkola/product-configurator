@@ -13,7 +13,9 @@ import {
 export interface RentalLine {
   id: string; // client-side only, for tag/list keys — not sent to Hailer
   unitId: string;
-  accountId: string | null;
+  // No accountId/shipTo here — Account/Contact/Ship To are shared across the
+  // whole batch (RentalDetails, picked once in RentalDetailsBox), same
+  // assumption a Rental Contract makes: one customer per document.
   startDate: string; // YYYY-MM-DD
   endDate: string; // YYYY-MM-DD
   // The per-week RATE (for display: "€4,875/week") — auto-filled from the
@@ -32,7 +34,6 @@ export interface RentalLine {
   freightReturn: string; // "Freight Return" — billed at cost
   cleaningAndCalibration: string; // one-time fee, defaults to the standard rate, waivable below
   cleaningAndCalibrationWaived: boolean;
-  shipTo: string;
   notes: string;
   // Deliberately no `poReference` here — a PO implies the customer has
   // already agreed to a price, but this tab creates the rental straight into
@@ -42,11 +43,10 @@ export interface RentalLine {
   // workflow's PO fields, which are excluded from this app's quote form too.
 }
 
-export function newRentalLine(unitId: string, defaults: { accountId: string | null; shipTo: string }): RentalLine {
+export function newRentalLine(unitId: string): RentalLine {
   return {
     id: `${unitId}-${Date.now()}`,
     unitId,
-    accountId: defaults.accountId,
     startDate: '',
     endDate: '',
     weeklyRate: '',
@@ -54,8 +54,13 @@ export function newRentalLine(unitId: string, defaults: { accountId: string | nu
     freightDelivery: '',
     freightReturn: '',
     cleaningAndCalibration: String(RENTAL_CLEANING_CALIBRATION_FEE),
-    cleaningAndCalibrationWaived: false,
-    shipTo: defaults.shipTo,
+    // Defaults to waived — the fee is already baked into the rental price
+    // (RENTAL_SHORT_TERM_WEEKLY_RATE / RENTAL_MONTHLY_RATE), so showing it as
+    // a standard charge that's then waived on every contract is a deliberate
+    // sales gesture ("look, we're giving you this for free") rather than an
+    // actual discount. Still an editable checkbox per line for the rare case
+    // someone wants to genuinely charge for it.
+    cleaningAndCalibrationWaived: true,
     notes: '',
   };
 }

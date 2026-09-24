@@ -117,12 +117,11 @@ function Section({
 }
 
 export default function RentalQuoteView({ lines, units, customers, contacts, rentalDetails }: Props) {
-  // Account/Ship To come from the first unit's own Account field — a Rental
+  // Account/Ship To are shared across the batch (RentalDetails) — a Rental
   // Contract assumes one customer per document, same as the main Quote.
-  const firstLine = lines[0];
   const account = useMemo(
-    () => customers.find((c) => c._id === firstLine?.accountId) || null,
-    [customers, firstLine],
+    () => customers.find((c) => c._id === rentalDetails.accountId) || null,
+    [customers, rentalDetails.accountId],
   );
   const contact = useMemo(
     () => contacts.find((c) => c._id === rentalDetails.contactId) || null,
@@ -152,7 +151,7 @@ export default function RentalQuoteView({ lines, units, customers, contacts, ren
       units,
       rentalDetails,
       accountName: account?.name,
-      shipTo: firstLine?.shipTo,
+      shipTo: rentalDetails.shipTo,
       contactName,
       contactEmail,
     });
@@ -177,7 +176,7 @@ export default function RentalQuoteView({ lines, units, customers, contacts, ren
           <GridItem>
             <VStack align="stretch" spacing={1}>
               <InfoRow label="Account" value={account?.name} />
-              <InfoRow label="Ship To" value={firstLine?.shipTo || undefined} />
+              <InfoRow label="Ship To" value={rentalDetails.shipTo || undefined} />
               <InfoRow label="Contact" value={contactName} />
               <InfoRow label="Email" value={contactEmail} />
             </VStack>

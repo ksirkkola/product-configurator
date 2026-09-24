@@ -28,7 +28,6 @@ import {
 } from '../constants/schema';
 import { RentalUnitSummary } from '../types';
 import { RentalLine, newRentalLine, estimateRentalRevenue, cleaningAndCalibrationDue } from '../rentalLines';
-import { QuoteDetails } from './QuoteDetailsBox';
 import RentalCatalogPicker from './RentalCatalogPicker';
 import RentalDetailsBox, { EMPTY_RENTAL_DETAILS, RentalDetails } from './RentalDetailsBox';
 import RentalLineEditor from './RentalLineEditor';
@@ -42,10 +41,9 @@ interface Props {
   customers: Activity[];
   contacts: Activity[];
   activeProductCode?: string | null;
-  details: QuoteDetails;
 }
 
-export default function RentalPush({ hailer, workflows, customers, contacts, activeProductCode, details }: Props) {
+export default function RentalPush({ hailer, workflows, customers, contacts, activeProductCode }: Props) {
   const [units, setUnits] = useState<RentalUnitSummary[] | null>(null);
   const [lines, setLines] = useState<RentalLine[]>([]);
   const [activeLineId, setActiveLineId] = useState<string | null>(null);
@@ -99,7 +97,7 @@ export default function RentalPush({ hailer, workflows, customers, contacts, act
       setActiveLineId(existing.id);
       return;
     }
-    const line = newRentalLine(unit._id, { accountId: details.accountId, shipTo: details.shipTo });
+    const line = newRentalLine(unit._id);
     setLines((prev) => [...prev, line]);
     setActiveLineId(line.id);
   }
@@ -116,16 +114,17 @@ export default function RentalPush({ hailer, workflows, customers, contacts, act
     setLines((prev) => prev.map((l) => (l.id === updated.id ? updated : l)));
   }
 
-  const canCreate = lines.length > 0 && lines.every((l) => l.unitId && l.accountId && l.startDate && l.endDate);
+  const canCreate =
+    lines.length > 0 && !!rentalDetails.accountId && lines.every((l) => l.unitId && l.startDate && l.endDate);
 
   async function handleCreate() {
     if (!canCreate) return;
     setCreating(true);
     setResult(null);
     try {
+      const account = customers.find((c) => c._id === rentalDetails.accountId);
       const activities = lines.map((line) => {
         const unit = units?.find((u) => u._id === line.unitId);
-        const account = customers.find((c) => c._id === line.accountId);
         const name = `Rental — ${unit?.productFamily || unit?.name || 'Unit'} — ${account?.name || 'TBD'}`.slice(0, 200);
         // CRITICAL: "Rental Fee for Desired Time Length" holds the TOTAL fee
         // for the period, not a per-week rate — push estimateRentalRevenue
@@ -135,11 +134,11 @@ export default function RentalPush({ hailer, workflows, customers, contacts, act
         const rentalFeeTotal = estimateRentalRevenue(line);
         const cleaningDue = cleaningAndCalibrationDue(line);
         const fields: Record<string, ActivityFieldValue> = {
-          [rentalsResolver(RENTALS_FIELDS.customer)]: line.accountId!,
+          [rentalsResolver(RENTALS_FIELDS.customer)]: rentalDetails.accountId!,
           [rentalsResolver(RENTALS_FIELDS.rentalUnit)]: line.unitId,
           [rentalsResolver(RENTALS_FIELDS.rentalStartDate)]: line.startDate,
           [rentalsResolver(RENTALS_FIELDS.rentalEndDate)]: line.endDate,
-          ...(line.shipTo ? { [rentalsResolver(RENTALS_FIELDS.shipTo)]: line.shipTo } : {}),
+          ...(rentalDetails.shipTo ? { [rentalsResolver(RENTALS_FIELDS.shipTo)]: rentalDetails.shipTo } : {}),
           ...(line.notes ? { [rentalsResolver(RENTALS_FIELDS.notes)]: line.notes } : {}),
           ...(rentalFeeTotal != null ? { [rentalsResolver(RENTALS_FIELDS.rentalFeeTotal)]: rentalFeeTotal } : {}),
           ...(line.startupFee ? { [rentalsResolver(RENTALS_FIELDS.startupFee)]: Number(line.startupFee) } : {}),
@@ -229,8 +228,8 @@ export default function RentalPush({ hailer, workflows, customers, contacts, act
       )}
 
       <RentalDetailsBox
+        customers={customers}
         contacts={contacts}
-        activeAccountId={activeLine?.accountId ?? null}
         details={rentalDetails}
         onChange={setRentalDetails}
       />
@@ -255,11 +254,11 @@ export default function RentalPush({ hailer, workflows, customers, contacts, act
           </GridItem>
           <GridItem>
             {activeLine ? (
-              <RentalLineEditor line={activeLine} unit={activeUnit} customers={customers} onChange={updateActiveLine} />
+              <RentalLineEditor line={activeLine} unit={activeUnit} onChange={updateActiveLine} />
             ) : (
               <Text color="subtleText" fontSize="sm">
-                Click a fleet unit to add it to this rental — fill in dates, rate, and customer for the highlighted
-                one.
+                Click a fleet unit to add it to this rental — fill in dates and rate for the highlighted one; Account
+                and Contact are shared above.
               </Text>
             )}
           </GridItem>

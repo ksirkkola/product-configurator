@@ -1,18 +1,22 @@
 import { useMemo } from 'react';
 import { Box, FormControl, FormLabel, Grid, GridItem, Input, Select, Text } from '@chakra-ui/react';
 import { Activity } from '@hailer/app-sdk';
-import { CONTACTS, INCOTERMS, RENTAL_SHIPPING_RESPONSIBILITY_OPTIONS } from '../constants/schema';
+import { CONTACTS, CUSTOMERS, INCOTERMS, RENTAL_SHIPPING_RESPONSIBILITY_OPTIONS } from '../constants/schema';
 import { readLinkId } from '../hailer/api-helpers';
 import SearchableSelect from './SearchableSelect';
 
-// Contact + Contract Reference # and the Shipping Responsibility block, shown
-// once above the fleet picker and applied to every unit created in this
-// batch. Contact/Contract Reference # are PDF-only (never pushed to Hailer —
-// same convention as QuoteDetails.contactId/proposalReference for the main
-// quote); the four Shipping Responsibility fields ARE real fields on the
-// Rentals workflow and get written onto every created Rental activity.
+// Account/Contact/Ship To/Contract Reference # and the Shipping Responsibility
+// block, shown once above the fleet picker and shared across every unit
+// created in this batch — a Rental Contract is one customer per document,
+// same assumption the main Quote makes. Account/Contact/Ship To/Contract
+// Reference # are PDF-only (never pushed to Hailer — same convention as
+// QuoteDetails for the main quote); the four Shipping Responsibility fields
+// ARE real fields on the Rentals workflow and get written onto every created
+// Rental activity.
 export interface RentalDetails {
+  accountId: string | null;
   contactId: string | null;
+  shipTo: string;
   contractReference: string;
   deliveryFreightResponsibility: string;
   returnFreightResponsibility: string;
@@ -21,7 +25,9 @@ export interface RentalDetails {
 }
 
 export const EMPTY_RENTAL_DETAILS: RentalDetails = {
+  accountId: null,
   contactId: null,
+  shipTo: '',
   contractReference: '',
   deliveryFreightResponsibility: '',
   returnFreightResponsibility: '',
@@ -30,18 +36,23 @@ export const EMPTY_RENTAL_DETAILS: RentalDetails = {
 };
 
 interface Props {
+  customers: Activity[];
   contacts: Activity[];
-  activeAccountId: string | null;
   details: RentalDetails;
   onChange: (details: RentalDetails) => void;
 }
 
-export default function RentalDetailsBox({ contacts, activeAccountId, details, onChange }: Props) {
-  // Filtered by the currently active unit's Account when one is set — same
-  // pattern as QuoteDetailsBox — otherwise shows every contact.
+export default function RentalDetailsBox({ customers, contacts, details, onChange }: Props) {
+  const customerOptions = useMemo(
+    () => customers.map((c) => ({ _id: c._id, name: c.name })).sort((a, b) => a.name.localeCompare(b.name)),
+    [customers],
+  );
+
+  // Filtered by the currently selected Account — same pattern as
+  // QuoteDetailsBox — otherwise shows every contact.
   const contactOptions = useMemo(() => {
-    const filtered = activeAccountId
-      ? contacts.filter((c) => readLinkId(c.fields?.[CONTACTS.fields.company]) === activeAccountId)
+    const filtered = details.accountId
+      ? contacts.filter((c) => readLinkId(c.fields?.[CONTACTS.fields.company]) === details.accountId)
       : contacts;
     return filtered
       .map((c) => {
@@ -50,25 +61,80 @@ export default function RentalDetailsBox({ contacts, activeAccountId, details, o
         return { _id: c._id, name: `${first} ${last}`.trim() || c.name };
       })
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [contacts, activeAccountId]);
+  }, [contacts, details.accountId]);
 
   function set<K extends keyof RentalDetails>(key: K, value: RentalDetails[K]) {
     onChange({ ...details, [key]: value });
+  }
+
+  function fillShipToFromAccount(next: RentalDetails, accountId: string) {
+    const account = customers.find((c) => c._id === accountId);
+    if (account && !next.shipTo) {
+      const street = (account.fields?.[CUSTOMERS.fields.streetAddress] as string) || '';
+      const city = (account.fields?.[CUSTOMERS.fields.city] as string) || '';
+      next.shipTo = [street, city].filter(Boolean).join(', ');
+    }
+  }
+
+  // Picking an Account resets Contact (forces re-pick within the new
+  // account's contacts) and auto-fills Ship To, same as QuoteDetailsBox.
+  function handleAccountChange(id: string) {
+    const next: RentalDetails = { ...details, accountId: id || null, contactId: null };
+    if (id) fillShipToFromAccount(next, id);
+    onChange(next);
+  }
+
+  // Picking a Contact BEFORE an Account is set derives the Account (and
+  // then Ship To) from that contact's own Company field — "just pick the
+  // contact and it populates everything." Never overrides an Account the
+  // rep already chose explicitly.
+  function handleContactChange(id: string) {
+    const next: RentalDetails = { ...details, contactId: id || null };
+    if (id && !details.accountId) {
+      const contact = contacts.find((c) => c._id === id);
+      const companyId = contact ? readLinkId(contact.fields?.[CONTACTS.fields.company]) : undefined;
+      if (companyId) {
+        next.accountId = companyId;
+        fillShipToFromAccount(next, companyId);
+      }
+    }
+    onChange(next);
   }
 
   return (
     <Box>
       <Grid templateColumns={{ base: '1fr', md: 'repeat(2, 1fr)' }} gap={4} mb={4}>
         <GridItem>
+          <FormControl isRequired>
+            <FormLabel fontSize="sm">Account</FormLabel>
+            <SearchableSelect
+              value={details.accountId}
+              onChange={handleAccountChange}
+              options={customerOptions}
+              placeholder="Select customer…"
+              allowClear
+            />
+          </FormControl>
+        </GridItem>
+        <GridItem>
           <FormControl>
             <FormLabel fontSize="sm">Contact</FormLabel>
             <SearchableSelect
               value={details.contactId}
-              onChange={(id) => set('contactId', id || null)}
+              onChange={handleContactChange}
               options={contactOptions}
-              placeholder="Select contact…"
+              placeholder="Select contact… (auto-fills Account/Ship To if not set)"
               allowClear
             />
+          </FormControl>
+        </GridItem>
+        <GridItem>
+          <FormControl>
+            <FormLabel fontSize="sm">Ship To</FormLabel>
+            <Input size="sm" value={details.shipTo} onChange={(e) => set('shipTo', e.target.value)} />
+            <Text fontSize="xs" color="subtleText" mt={1}>
+              Auto-filled from the Account's address — edit freely if this rental ships somewhere else.
+            </Text>
           </FormControl>
         </GridItem>
         <GridItem>
@@ -83,9 +149,6 @@ export default function RentalDetailsBox({ contacts, activeAccountId, details, o
           </FormControl>
         </GridItem>
       </Grid>
-      <Text fontSize="xs" color="subtleText" mt={-2} mb={4}>
-        Shown on the Rental Contract header — Account/Ship To come from the unit's own Account field below.
-      </Text>
 
       <Box borderWidth="1px" borderRadius="md" p={4}>
         <Text fontSize="xs" fontWeight="bold" mb={3} color="subtleText" textTransform="uppercase">

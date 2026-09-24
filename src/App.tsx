@@ -674,7 +674,6 @@ export default function App() {
               customers={customers}
               contacts={contacts}
               activeProductCode={activeMain?.productCode}
-              details={quoteDetails}
             />
           </TabPanel>
         </TabPanels>
