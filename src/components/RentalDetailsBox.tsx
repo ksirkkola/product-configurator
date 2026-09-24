@@ -72,7 +72,8 @@ export default function RentalDetailsBox({ customers, contacts, details, onChang
     if (account && !next.shipTo) {
       const street = (account.fields?.[CUSTOMERS.fields.streetAddress] as string) || '';
       const city = (account.fields?.[CUSTOMERS.fields.city] as string) || '';
-      next.shipTo = [street, city].filter(Boolean).join(', ');
+      const country = (account.fields?.[CUSTOMERS.fields.country] as string) || '';
+      next.shipTo = [street, city, country].filter(Boolean).join(', ');
     }
   }
 

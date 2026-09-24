@@ -2,8 +2,8 @@
   "author": "TMRX",
   "appId": "6a686250ecb3aa66f7e12b14",
   "description": "Configure a product from the Price List catalog, generate a customer quote, push parts to a Work Order, or start a Rental.",
-  "version": "3.27.2",
-  "versionDescription": "Reworked how a rental unit gets priced and added: removed the editable 'Rental Fee for Desired Time Length' number field entirely. Now, entering both dates calculates the price live and shows it as a button under the unit ('Add to Quote — €X for N weeks') — clicking it is what actually adds the unit to the rental, same pattern as the Calibration box on the main Configure tab. Units clicked in the fleet picker are staged for configuration first; nothing counts toward the summary/total or gets created in Hailer until Add to Quote is clicked. Re-clicking an already-added unit reopens it for editing, and the button relabels to 'Update Quote'.",
+  "version": "3.27.3",
+  "versionDescription": "Auto-filled Ship To (on both the main Quote Details box and the Rental Details box) now includes the Account's Country, not just Street/City.",
   "config": {
     "fields": {
       "workflowId": {

@@ -80,7 +80,8 @@ export default function QuoteDetailsBox({ customers, contacts, details, onChange
     if (account && !details.shipTo) {
       const street = (account.fields?.[CUSTOMERS.fields.streetAddress] as string) || '';
       const city = (account.fields?.[CUSTOMERS.fields.city] as string) || '';
-      next.shipTo = [street, city].filter(Boolean).join(', ');
+      const country = (account.fields?.[CUSTOMERS.fields.country] as string) || '';
+      next.shipTo = [street, city, country].filter(Boolean).join(', ');
     }
     if (account && !details.finalDestinationCountry) {
       next.finalDestinationCountry = (account.fields?.[CUSTOMERS.fields.country] as string) || '';
