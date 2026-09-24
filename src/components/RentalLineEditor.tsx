@@ -3,6 +3,7 @@ import {
   AlertIcon,
   Badge,
   Box,
+  Button,
   Checkbox,
   FormControl,
   FormLabel,
@@ -17,27 +18,26 @@ import {
   VStack,
 } from '@chakra-ui/react';
 import { RentalUnitSummary } from '../types';
-import { estimateRentalWeeks, RentalLine, tieredWeeklyRate } from '../rentalLines';
-import { RENTAL_MONTHLY_RATE, RENTAL_SHORT_TERM_MAX_WEEKS, RENTAL_SHORT_TERM_WEEKLY_RATE } from '../constants/schema';
+import { estimateRentalRevenue, estimateRentalWeeks, RentalLine, tieredWeeklyRate } from '../rentalLines';
 import { formatMoney } from '../hailer/api-helpers';
 
 interface Props {
   line: RentalLine;
   unit: RentalUnitSummary | undefined;
+  isAlreadyAdded: boolean;
   onChange: (line: RentalLine) => void;
+  onAddToQuote: () => void;
 }
 
-export default function RentalLineEditor({ line, unit, onChange }: Props) {
+export default function RentalLineEditor({ line, unit, isAlreadyAdded, onChange, onAddToQuote }: Props) {
   function set<K extends keyof RentalLine>(key: K, value: RentalLine[K]) {
     onChange({ ...line, [key]: value });
   }
 
-  // Weekly Rate auto-fills from the universal tiered schedule the moment both
-  // dates are set, and stays in sync as either date is adjusted — the rep
-  // never has to look up or type a rate. Still an editable NumberInput below
-  // for the rare negotiated exception, but re-selecting either date always
-  // recalculates it fresh (a stale manually-typed rate silently surviving a
-  // later date change would be worse than losing a one-off override).
+  // weeklyRate auto-fills from the universal tiered schedule the moment both
+  // dates are set, and stays in sync as either date is adjusted — there's no
+  // manual rate field anymore; the calculated price is shown as the "Add to
+  // Quote" button below instead (see the price button further down).
   function handleDateChange(key: 'startDate' | 'endDate', value: string) {
     const next: RentalLine = { ...line, [key]: value };
     const weeks = estimateRentalWeeks(next);
@@ -46,6 +46,7 @@ export default function RentalLineEditor({ line, unit, onChange }: Props) {
   }
 
   const weeks = estimateRentalWeeks(line);
+  const revenue = estimateRentalRevenue(line);
   const isNotAvailable = unit?.status && unit.status !== 'Available';
 
   return (
@@ -68,6 +69,17 @@ export default function RentalLineEditor({ line, unit, onChange }: Props) {
         )}
       </Box>
 
+      <Button
+        colorScheme="green"
+        size="lg"
+        isDisabled={weeks == null || revenue == null}
+        onClick={onAddToQuote}
+      >
+        {weeks != null && revenue != null
+          ? `${isAlreadyAdded ? 'Update' : 'Add to'} Quote — ${formatMoney(revenue)} for ${weeks} week${weeks === 1 ? '' : 's'}`
+          : 'Select both dates to calculate the price'}
+      </Button>
+
       <Grid templateColumns={{ base: '1fr', md: 'repeat(2, 1fr)' }} gap={3}>
         <GridItem>
           <FormControl isRequired>
@@ -89,19 +101,6 @@ export default function RentalLineEditor({ line, unit, onChange }: Props) {
               value={line.endDate}
               onChange={(e) => handleDateChange('endDate', e.target.value)}
             />
-          </FormControl>
-        </GridItem>
-        <GridItem>
-          <FormControl>
-            <FormLabel fontSize="sm">Rental Fee for Desired Time Length (€/week)</FormLabel>
-            <NumberInput size="sm" min={0} value={line.weeklyRate} onChange={(v) => set('weeklyRate', v)}>
-              <NumberInputField />
-            </NumberInput>
-            <Text fontSize="xs" color="subtleText" mt={1}>
-              {weeks != null
-                ? `Auto-filled for ${weeks} week${weeks === 1 ? '' : 's'} at ${formatMoney(tieredWeeklyRate(weeks))}/week — edit to override.`
-                : `Auto-fills once both dates are set: ${formatMoney(RENTAL_SHORT_TERM_WEEKLY_RATE)}/week for the first ${RENTAL_SHORT_TERM_MAX_WEEKS} weeks, then ${formatMoney(RENTAL_MONTHLY_RATE)}/month (${formatMoney(RENTAL_MONTHLY_RATE / 4)}/week) from week ${RENTAL_SHORT_TERM_MAX_WEEKS + 1} on.`}
-            </Text>
           </FormControl>
         </GridItem>
         <GridItem>

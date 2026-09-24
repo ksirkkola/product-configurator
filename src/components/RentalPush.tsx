@@ -45,8 +45,13 @@ interface Props {
 
 export default function RentalPush({ hailer, workflows, customers, contacts, activeProductCode }: Props) {
   const [units, setUnits] = useState<RentalUnitSummary[] | null>(null);
+  // Committed lines — these are what count toward the summary/total and get
+  // created in Hailer. A unit clicked in the catalog is NOT added here
+  // immediately; it's staged in draftLine until the rep confirms the
+  // calculated price via the "Add to Quote" button (same pattern as
+  // CalibrationBox — configure, see the price, then commit it).
   const [lines, setLines] = useState<RentalLine[]>([]);
-  const [activeLineId, setActiveLineId] = useState<string | null>(null);
+  const [draftLine, setDraftLine] = useState<RentalLine | null>(null);
   const [rentalDetails, setRentalDetails] = useState<RentalDetails>(EMPTY_RENTAL_DETAILS);
   const [creating, setCreating] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null);
@@ -87,31 +92,40 @@ export default function RentalPush({ hailer, workflows, customers, contacts, act
     });
   }, [units, activeProductCode]);
 
-  const activeLine = useMemo(() => lines.find((l) => l.id === activeLineId) ?? null, [lines, activeLineId]);
-  const activeUnit = useMemo(() => units?.find((u) => u._id === activeLine?.unitId), [units, activeLine]);
+  const draftUnit = useMemo(() => units?.find((u) => u._id === draftLine?.unitId), [units, draftLine]);
   const addedUnitIds = useMemo(() => lines.map((l) => l.unitId), [lines]);
+  const isDraftAlreadyAdded = useMemo(
+    () => !!draftLine && lines.some((l) => l.id === draftLine.id),
+    [lines, draftLine],
+  );
 
+  // Clicking a unit already in the quote re-opens ITS line for editing;
+  // clicking a new one stages a fresh draft — neither is committed to
+  // `lines` until "Add to Quote" is clicked.
   function handleSelectUnit(unit: RentalUnitSummary) {
     const existing = lines.find((l) => l.unitId === unit._id);
-    if (existing) {
-      setActiveLineId(existing.id);
-      return;
-    }
-    const line = newRentalLine(unit._id);
-    setLines((prev) => [...prev, line]);
-    setActiveLineId(line.id);
+    setDraftLine(existing ? { ...existing } : newRentalLine(unit._id));
   }
 
   function removeLine(id: string) {
-    setLines((prev) => {
-      const next = prev.filter((l) => l.id !== id);
-      if (activeLineId === id) setActiveLineId(next.length ? next[next.length - 1].id : null);
-      return next;
-    });
+    setLines((prev) => prev.filter((l) => l.id !== id));
+    if (draftLine?.id === id) setDraftLine(null);
   }
 
-  function updateActiveLine(updated: RentalLine) {
-    setLines((prev) => prev.map((l) => (l.id === updated.id ? updated : l)));
+  // Commits the draft into `lines` — inserts new, or replaces in place if
+  // this unit was already added (editing an existing one).
+  function handleAddToQuote() {
+    if (!draftLine) return;
+    setLines((prev) => {
+      const idx = prev.findIndex((l) => l.id === draftLine.id);
+      if (idx >= 0) {
+        const next = [...prev];
+        next[idx] = draftLine;
+        return next;
+      }
+      return [...prev, draftLine];
+    });
+    setDraftLine(null);
   }
 
   const canCreate =
@@ -171,7 +185,7 @@ export default function RentalPush({ hailer, workflows, customers, contacts, act
 
       setResult({ ok: true, message: `Created ${created.length} rental${created.length === 1 ? '' : 's'}.` });
       setLines([]);
-      setActiveLineId(null);
+      setDraftLine(null);
       setRentalDetails(EMPTY_RENTAL_DETAILS);
       setShowPreview(false);
     } catch (err) {
@@ -208,10 +222,10 @@ export default function RentalPush({ hailer, workflows, customers, contacts, act
                 <Tag
                   size="md"
                   borderRadius="full"
-                  variant={l.id === activeLineId ? 'solid' : 'subtle'}
+                  variant={l.id === draftLine?.id ? 'solid' : 'subtle'}
                   colorScheme="blue"
                   cursor="pointer"
-                  onClick={() => setActiveLineId(l.id)}
+                  onClick={() => setDraftLine({ ...l })}
                 >
                   <TagLabel>{unit?.productFamily || unit?.name || 'Unit'}</TagLabel>
                   <TagCloseButton
@@ -247,18 +261,24 @@ export default function RentalPush({ hailer, workflows, customers, contacts, act
             </Text>
             <RentalCatalogPicker
               units={sortedUnits}
-              activeUnitId={activeLine?.unitId ?? null}
+              activeUnitId={draftLine?.unitId ?? null}
               addedUnitIds={addedUnitIds}
               onSelect={handleSelectUnit}
             />
           </GridItem>
           <GridItem>
-            {activeLine ? (
-              <RentalLineEditor line={activeLine} unit={activeUnit} onChange={updateActiveLine} />
+            {draftLine ? (
+              <RentalLineEditor
+                line={draftLine}
+                unit={draftUnit}
+                isAlreadyAdded={isDraftAlreadyAdded}
+                onChange={setDraftLine}
+                onAddToQuote={handleAddToQuote}
+              />
             ) : (
               <Text color="subtleText" fontSize="sm">
-                Click a fleet unit to add it to this rental — fill in dates and rate for the highlighted one; Account
-                and Contact are shared above.
+                Click a fleet unit to configure it — fill in dates, see the calculated price, then Add to Quote.
+                Account and Contact are shared above.
               </Text>
             )}
           </GridItem>
@@ -269,13 +289,6 @@ export default function RentalPush({ hailer, workflows, customers, contacts, act
       )}
 
       <HStack justify="flex-end">
-        {activeLine && (
-          <Text fontSize="xs" color="subtleText">
-            {estimateRentalRevenue(activeLine) != null
-              ? `Est. revenue for this unit: ${estimateRentalRevenue(activeLine)!.toLocaleString(undefined, { style: 'currency', currency: 'EUR' })}`
-              : ''}
-          </Text>
-        )}
         <Box flex={1} />
         <Button
           variant="outline"

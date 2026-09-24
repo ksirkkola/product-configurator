@@ -2,8 +2,8 @@
   "author": "TMRX",
   "appId": "6a686250ecb3aa66f7e12b14",
   "description": "Configure a product from the Price List catalog, generate a customer quote, push parts to a Work Order, or start a Rental.",
-  "version": "3.27.1",
-  "versionDescription": "Two fixes to the Rental tab following v3.27.0: (1) Account/Contact/Ship To were missing from the Rental Contract because they were wrongly modeled as per-unit fields — moved them into the shared RentalDetailsBox (one customer per rental batch, same assumption the contract makes). Picking a Contact before an Account now auto-derives both Account and Ship To from that contact's own Company record — 'just pick the contact and it populates everything.' (2) Cleaning and Calibration now defaults to waived on every new line — the fee is already baked into the rental price schedule, so showing the standard EUR2,000 price noted as waived is a deliberate customer-facing gesture, not an actual discount. Still an editable checkbox to actually charge it in the rare case that's needed.",
+  "version": "3.27.2",
+  "versionDescription": "Reworked how a rental unit gets priced and added: removed the editable 'Rental Fee for Desired Time Length' number field entirely. Now, entering both dates calculates the price live and shows it as a button under the unit ('Add to Quote — €X for N weeks') — clicking it is what actually adds the unit to the rental, same pattern as the Calibration box on the main Configure tab. Units clicked in the fleet picker are staged for configuration first; nothing counts toward the summary/total or gets created in Hailer until Add to Quote is clicked. Re-clicking an already-added unit reopens it for editing, and the button relabels to 'Update Quote'.",
   "config": {
     "fields": {
       "workflowId": {
