@@ -18,6 +18,7 @@ export interface RentalDetails {
   contactId: string | null;
   shipTo: string;
   contractReference: string;
+  contractExpires: string; // YYYY-MM-DD — PDF-only, same as the main quote's Quote Expiration
   deliveryFreightResponsibility: string;
   returnFreightResponsibility: string;
   insuranceDuringTransportation: string;
@@ -29,6 +30,7 @@ export const EMPTY_RENTAL_DETAILS: RentalDetails = {
   contactId: null,
   shipTo: '',
   contractReference: '',
+  contractExpires: '',
   deliveryFreightResponsibility: '',
   returnFreightResponsibility: '',
   insuranceDuringTransportation: '',
