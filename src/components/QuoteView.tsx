@@ -25,7 +25,7 @@ import { LinePricing, Totals } from '../pricing';
 import { formatMoney } from '../hailer/api-helpers';
 import { CONTACTS, ITEM_TYPE, OPPORTUNITY } from '../constants/schema';
 import { groupQuoteSections, SectionDiscounts } from '../quoteSections';
-import { generateQuotePdf } from '../pdf';
+import { generateQuotePdf, generateQuotePdfFile } from '../pdf';
 import { QuoteDetails } from './QuoteDetailsBox';
 import EditablePriceCell from './EditablePriceCell';
 import EditablePercentCell from './EditablePercentCell';
@@ -70,6 +70,7 @@ export default function QuoteView({
   onSectionDiscountChange,
 }: Props) {
   const [notice, setNotice] = useState<string | null>(null);
+  const [savingPdf, setSavingPdf] = useState(false);
 
   const account = useMemo(
     () => customers.find((c) => c._id === details.accountId) || null,
@@ -113,7 +114,7 @@ export default function QuoteView({
     });
   }
 
-  function saveToOpportunity() {
+  async function saveToOpportunity() {
     setNotice(null);
     const mainLines = totals.lines.filter((p) => p.line.item.itemType === ITEM_TYPE.MAIN);
     const main: (typeof mainLines)[number] | undefined = mainLines[0];
@@ -168,6 +169,29 @@ export default function QuoteView({
       fields[OPPORTUNITY.fields.quoteExpirationDate] = new Date(details.quoteExpirationDate).getTime();
     }
 
+    // Generate the same PDF as "Download PDF" and attach it to the Opportunity
+    // so the quote that was actually quoted stays on record — if the upload
+    // fails for any reason, the opportunity form still opens with everything
+    // else prefilled rather than blocking the rep on a PDF problem.
+    setSavingPdf(true);
+    try {
+      const pdfFile = await generateQuotePdfFile({
+        totals,
+        details,
+        sectionDiscounts,
+        accountName: account?.name,
+        agentName: agent?.name,
+        contactName,
+        contactEmail,
+        contactPhone,
+      });
+      const fileId = await hailer.file.upload(pdfFile, pdfFile.name, { isPublic: true });
+      if (fileId) fields[OPPORTUNITY.fields.quotePdf] = JSON.stringify([fileId]);
+    } catch (err) {
+      console.error('Quote PDF upload failed:', err);
+    }
+    setSavingPdf(false);
+
     void hailer.ui.activity
       .create(OPPORTUNITY.workflowId, {
         name: `${
@@ -187,8 +211,8 @@ export default function QuoteView({
 
     setNotice(
       matchedProductName
-        ? 'Opportunity form opened with the quote prefilled — complete the sales fields and save.'
-        : 'Opportunity form opened. Product Name had no matching option — pick it manually in the form.',
+        ? 'Opportunity form opened with the quote (PDF attached) prefilled — complete the sales fields and save.'
+        : 'Opportunity form opened with the quote PDF attached. Product Name had no matching option — pick it manually in the form.',
     );
   }
 
@@ -233,7 +257,7 @@ export default function QuoteView({
           <Button variant="outline" size="sm" onClick={downloadPdf}>
             Download PDF
           </Button>
-          <Button colorScheme="green" size="sm" onClick={saveToOpportunity}>
+          <Button colorScheme="green" size="sm" isLoading={savingPdf} loadingText="Attaching PDF…" onClick={saveToOpportunity}>
             Save quote to Opportunity
           </Button>
         </HStack>

@@ -210,9 +210,26 @@ export function buildQuoteDocDefinition(input: QuotePdfInput): TDocumentDefiniti
   return docDefinition;
 }
 
+function quoteFilename(input: QuotePdfInput): string {
+  const filenameParts = [input.details.proposalReference, input.accountName].filter(Boolean).join(' - ');
+  return `Quote${filenameParts ? ` - ${filenameParts}` : ''}.pdf`;
+}
+
 export function generateQuotePdf(input: QuotePdfInput): void {
   ensurePdfFonts();
   const docDefinition = buildQuoteDocDefinition(input);
-  const filenameParts = [input.details.proposalReference, input.accountName].filter(Boolean).join(' - ');
-  pdfMake.createPdf(docDefinition).download(`Quote${filenameParts ? ` - ${filenameParts}` : ''}.pdf`);
+  pdfMake.createPdf(docDefinition).download(quoteFilename(input));
+}
+
+/**
+ * Builds the same quote PDF as generateQuotePdf, but as a File ready for
+ * hailer.file.upload — used to attach the quote to the Opportunity record
+ * instead of (or alongside) downloading it to the rep's machine.
+ */
+export async function generateQuotePdfFile(input: QuotePdfInput): Promise<File> {
+  ensurePdfFonts();
+  const docDefinition = buildQuoteDocDefinition(input);
+  const filename = quoteFilename(input);
+  const blob = await pdfMake.createPdf(docDefinition).getBlob();
+  return new File([blob], filename, { type: 'application/pdf' });
 }

@@ -213,6 +213,7 @@ export const OPPORTUNITY = {
     finalDestinationCountry: '6a8d1dcacac73beca6b4cad0', // dropdown
     hsCode: '6a8d1dcacac73beca6b4cad3', // text
     incoterms: '6a8d1dcacac73beca6b4cad6', // dropdown
+    quotePdf: '6ac341a951fe8a88ee46ee10', // file — value is JSON.stringify([fileId])
   },
 } as const;
 
