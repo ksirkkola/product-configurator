@@ -150,7 +150,7 @@ export const MANUAL_PRICE_TYPES: string[] = [
 ];
 
 export const INCOTERMS = [
-  'EXW', 'FCA', 'FAS', 'FOB', 'CFR', 'CIF', 'CPT', 'CIP', 'DAP', 'DPU', 'DDP',
+  'EXW', 'FCA Origin (Finland)', 'FCA Origin (USA)', 'FAS', 'FOB', 'CFR', 'CIF', 'CPT', 'CIP', 'DAP', 'DPU', 'DDP',
 ] as const;
 
 export const WORK_ORDER_FIELDS = {

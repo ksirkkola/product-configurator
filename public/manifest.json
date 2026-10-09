@@ -2,8 +2,8 @@
   "author": "TMRX",
   "appId": "6a686250ecb3aa66f7e12b14",
   "description": "Configure a product from the Price List catalog, generate a customer quote, push parts to a Work Order, or start a Rental.",
-  "version": "3.28.0",
-  "versionDescription": "\"Save quote to Opportunity\" now also attaches the quote as a PDF on the new Opportunity record (new 'Quote PDF' file field) \u2014 it's generated the same way as the 'Download PDF' button, just uploaded and attached instead of downloaded to the rep's machine. If the PDF upload fails for any reason, the opportunity form still opens prefilled rather than blocking the rep.",
+  "version": "3.28.1",
+  "versionDescription": "Incoterms: FCA is now split into FCA Origin (Finland) and FCA Origin (USA) in the quote and rental Incoterms dropdowns, matching the workspace field.",
   "config": {
     "fields": {
       "workflowId": {
