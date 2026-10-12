@@ -2,8 +2,8 @@
   "author": "TMRX",
   "appId": "6a686250ecb3aa66f7e12b14",
   "description": "Configure a product from the Price List catalog, generate a customer quote, push parts to a Work Order, or start a Rental.",
-  "version": "3.29.0",
-  "versionDescription": "Quotes stay editable until the PO arrives: Save quote to Opportunity now stores the whole quote on the opportunity and updates the same opportunity on later saves (no duplicates, new PDF added, older PDFs kept). Resume Draft lists quotes from every open phase (Discovery, Proposal, Negotiations, Budgetary Review) with their phase. Opportunities in Closed - Won / Closed - Lost are locked. Save Draft no longer renames an opportunity that has moved past Discovery.",
+  "version": "3.30.0",
+  "versionDescription": "Agent commission is now grossed up: final price = price / (1 - commission %), e.g. 25% = price / 0.75, so the agent gets that share of the final price. Exempt lines (ISO, Startup, Calibration, Shipping) are unchanged and the 1.6% NET60 option stays a simple markup. Quotes already saved reprice with the new formula when reopened.",
   "config": {
     "fields": {
       "workflowId": {

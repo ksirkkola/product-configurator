@@ -1,5 +1,5 @@
 import { ConfigLine } from './types';
-import { COMMISSION_EXEMPT_TYPES, ITEM_TYPE, MARGIN_TOTAL_TYPES } from './constants/schema';
+import { COMMISSION_EXEMPT_TYPES, ITEM_TYPE, MARGIN_TOTAL_TYPES, SURCHARGE_TIERS } from './constants/schema';
 
 // Keyed by line.item._id — a manual per-unit price that replaces the catalog
 // price for that line (rare discounting / one-off pricing on a PRF item).
@@ -34,7 +34,9 @@ export interface Totals {
   prfCount: number;
 }
 
-// Agent commission is added ON TOP of list price: final = price * (1 + pct/100).
+// Agent commission is grossed up so it is a share of the FINAL price: final = price / (1 - pct/100)
+// (25% -> price / 0.75). The 1.6% NET60 option is a payment-terms surcharge, not commission, and stays a
+// simple markup: final = price * 1.016.
 // ISO 17025 Certification, Startup, Calibration, and Shipping lines are commission-EXEMPT:
 // agents get no cut of service/pass-through work, so those lines carry their
 // flat price (see COMMISSION_EXEMPT_TYPES).
@@ -45,6 +47,14 @@ export interface Totals {
 // customization (MARGIN_TOTAL_TYPES). ISO Certification, Startup, Calibration,
 // and Shipping are excluded from BOTH — they still count toward
 // listSum/costSum/finalSum for the other totals, just not either margin figure.
+// Multiplier applied to a (non-exempt) list price to get the final price.
+export function commissionMultiplier(commissionPct: number): number {
+  if (!commissionPct || commissionPct <= 0) return 1;
+  if (SURCHARGE_TIERS.includes(commissionPct)) return 1 + commissionPct / 100;
+  // Guard: 100%+ would divide by zero / go negative; the tiers top out at 35%.
+  return 1 / (1 - Math.min(commissionPct, 99) / 100);
+}
+
 export function computeTotals(
   lines: ConfigLine[],
   commissionPct: number,
@@ -52,7 +62,7 @@ export function computeTotals(
 ): Totals {
   const priced: LinePricing[] = lines.map((line) => {
     const exempt = COMMISSION_EXEMPT_TYPES.includes(line.item.itemType);
-    const multiplier = exempt ? 1 : 1 + commissionPct / 100;
+    const multiplier = exempt ? 1 : commissionMultiplier(commissionPct);
     const override = priceOverrides[line.item._id];
     const isOverridden = override != null;
     // Included takes effect only when not manually overridden — a rep

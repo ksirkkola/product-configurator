@@ -176,6 +176,11 @@ export const WORK_ORDER_LINE_ITEM_FIELDS = {
 
 export const COMMISSION_TIERS = [0, 1.6, 5, 10, 15, 20, 25, 35] as const;
 
+// Tiers that are a flat payment-terms surcharge (price x (1 + pct/100)), not an agent commission.
+// Agent commission tiers are grossed up instead: price / (1 - pct/100), so the agent's cut is that
+// share of the FINAL price (25% -> price / 0.75).
+export const SURCHARGE_TIERS: number[] = [1.6];
+
 // Special-case labels for tiers that represent something other than a plain
 // agent cut (e.g. 1.6% is the NET60 payment-terms surcharge, not commission).
 export const COMMISSION_TIER_LABELS: Partial<Record<(typeof COMMISSION_TIERS)[number], string>> = {
