@@ -350,6 +350,19 @@ export default function App() {
     );
   }
 
+  // The whole quote as JSON — saved on the opportunity so the quote can be reopened and edited.
+  function buildDraftJson(): string {
+    return serializeDraft({
+      entries,
+      calLines,
+      extraLines,
+      commissionPct,
+      quoteDetails,
+      priceOverrides,
+      sectionDiscounts,
+    });
+  }
+
   async function handleSaveDraft() {
     if (!hailer) return;
     setDraftSaving(true);
@@ -357,19 +370,18 @@ export default function App() {
     try {
       const firstMain = entries.length > 0 ? mains.find((m) => m._id === entries[0].mainId) : undefined;
       const name = draftName(firstMain?.productCode, entries.length);
-      const json = serializeDraft({
-        entries,
-        calLines,
-        extraLines,
-        commissionPct,
-        quoteDetails,
-        priceOverrides,
-        sectionDiscounts,
-      });
+      const json = buildDraftJson();
       const fields = { [OPPORTUNITY.fields.configuratorDraftJson]: json };
 
       if (draftActivityId) {
-        const updated = await hailer.activity.update([{ _id: draftActivityId, name, fields }]);
+        // A quote stays editable until its PO is received (opportunity Closed - Won / Closed - Lost).
+        const current = await hailer.activity.get(draftActivityId);
+        if (current && (OPPORTUNITY.closedPhaseIds as readonly string[]).includes(current.currentPhase)) {
+          throw new Error('This opportunity is closed (PO received or lost), so its quote is locked and can no longer be changed here.');
+        }
+        // Only a Discovery draft gets the "DRAFT — ..." name; never rename a real opportunity.
+        const isDiscovery = !current || current.currentPhase === OPPORTUNITY.discoveryPhaseId;
+        const updated = await hailer.activity.update([{ _id: draftActivityId, ...(isDiscovery ? { name } : {}), fields }]);
         if (!updated) throw new Error('Draft update was not confirmed — check Hailer before retrying.');
       } else {
         const created = await hailer.activity.create(OPPORTUNITY.workflowId, [
@@ -660,6 +672,9 @@ export default function App() {
               onResetOverride={handleResetOverride}
               sectionDiscounts={sectionDiscounts}
               onSectionDiscountChange={handleSectionDiscountChange}
+              linkedOpportunityId={draftActivityId}
+              getDraftJson={buildDraftJson}
+              onLinked={setDraftActivityId}
             />
           </TabPanel>
 

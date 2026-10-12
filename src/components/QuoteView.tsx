@@ -44,6 +44,11 @@ interface Props {
   onResetOverride: (itemId: string) => void;
   sectionDiscounts: SectionDiscounts;
   onSectionDiscountChange: (sectionType: string, pct: number) => void;
+  /** The opportunity this quote is saved on (set after Save Draft / Save to Opportunity / Resume). */
+  linkedOpportunityId: string | null;
+  /** The whole quote as JSON, stored on the opportunity so it stays editable. */
+  getDraftJson: () => string;
+  onLinked: (opportunityId: string) => void;
 }
 
 function InfoRow({ label, value }: { label: string; value?: string }) {
@@ -68,6 +73,9 @@ export default function QuoteView({
   onResetOverride,
   sectionDiscounts,
   onSectionDiscountChange,
+  linkedOpportunityId,
+  getDraftJson,
+  onLinked,
 }: Props) {
   const [notice, setNotice] = useState<string | null>(null);
   const [savingPdf, setSavingPdf] = useState(false);
@@ -168,6 +176,8 @@ export default function QuoteView({
     if (details.quoteExpirationDate) {
       fields[OPPORTUNITY.fields.quoteExpirationDate] = new Date(details.quoteExpirationDate).getTime();
     }
+    // Keep the whole quote on the opportunity so it can be reopened and edited until the PO arrives.
+    fields[OPPORTUNITY.fields.configuratorDraftJson] = getDraftJson();
 
     // Generate the same PDF as "Download PDF" and attach it to the Opportunity
     // so the quote that was actually quoted stays on record — if the upload
@@ -192,6 +202,40 @@ export default function QuoteView({
     }
     setSavingPdf(false);
 
+    // Already saved on an opportunity: update that same one (no duplicate), keep it a draft until the PO.
+    if (linkedOpportunityId) {
+      try {
+        const existing = await hailer.activity.get(linkedOpportunityId);
+        const phase = existing?.currentPhase;
+        if (phase && (OPPORTUNITY.closedPhaseIds as readonly string[]).includes(phase)) {
+          setNotice('This opportunity is closed (PO received or lost), so its quote is locked and was not changed.');
+          return;
+        }
+        // Keep earlier PDF versions on the record: newest first.
+        const newFile = fields[OPPORTUNITY.fields.quotePdf] as string | undefined;
+        if (newFile) {
+          let prior: string[] = [];
+          try {
+            const raw = existing?.fields?.[OPPORTUNITY.fields.quotePdf];
+            const parsed = typeof raw === 'string' ? JSON.parse(raw) : [];
+            if (Array.isArray(parsed)) prior = parsed.filter((x) => typeof x === 'string');
+          } catch { /* unreadable old value: start fresh */ }
+          fields[OPPORTUNITY.fields.quotePdf] = JSON.stringify([...(JSON.parse(newFile) as string[]), ...prior]);
+        }
+        await hailer.activity.update([{
+          _id: linkedOpportunityId,
+          fields,
+          // A Discovery draft moves up to Proposal; later phases stay where they are.
+          ...(phase === OPPORTUNITY.discoveryPhaseId ? { phaseId: OPPORTUNITY.proposalPhaseId } : {}),
+        }], {});
+        void hailer.ui.activity.open(linkedOpportunityId);
+        setNotice('Opportunity updated with the latest quote and a new PDF. The quote stays a draft: you can keep editing and saving it until the PO is received and the opportunity is closed.');
+      } catch (err) {
+        setNotice(`Failed to update the opportunity: ${formatHailerError(err)}`);
+      }
+      return;
+    }
+
     void hailer.ui.activity
       .create(OPPORTUNITY.workflowId, {
         name: `${
@@ -203,7 +247,10 @@ export default function QuoteView({
         fields,
       })
       .then((created) => {
-        if (created?._id) void hailer.ui.activity.open(created._id);
+        if (created?._id) {
+          onLinked(created._id); // later saves update this opportunity instead of creating a duplicate
+          void hailer.ui.activity.open(created._id);
+        }
       })
       .catch((err: unknown) => {
         setNotice(`Failed to open the opportunity form: ${formatHailerError(err)}`);
@@ -211,8 +258,8 @@ export default function QuoteView({
 
     setNotice(
       matchedProductName
-        ? 'Opportunity form opened with the quote (PDF attached) prefilled — complete the sales fields and save.'
-        : 'Opportunity form opened with the quote PDF attached. Product Name had no matching option — pick it manually in the form.',
+        ? 'Opportunity form opened with the quote (PDF attached) prefilled — complete the sales fields and save. It stays a draft: reopen it with Resume Draft and save again to update it until the PO is received.'
+        : 'Opportunity form opened with the quote PDF attached. Product Name had no matching option — pick it manually in the form. It stays a draft until the PO is received.',
     );
   }
 
@@ -252,7 +299,12 @@ export default function QuoteView({
   return (
     <Box>
       <HStack justify="space-between" mb={4} className="no-print">
-        <Heading size="md">Customer Quote</Heading>
+        <Box>
+          <Heading size="md">Customer Quote</Heading>
+          {linkedOpportunityId && (
+            <Text fontSize="xs" color="subtleText">Saved on an opportunity. Saving again updates it (and the PDF) until the PO is received.</Text>
+          )}
+        </Box>
         <HStack spacing={3}>
           <Button variant="outline" size="sm" onClick={downloadPdf}>
             Download PDF

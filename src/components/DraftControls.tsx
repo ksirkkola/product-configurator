@@ -26,6 +26,7 @@ interface DraftRow {
   _id: string;
   name: string;
   updated: number;
+  phase: string;
 }
 
 interface Props {
@@ -37,9 +38,9 @@ interface Props {
 }
 
 // Save Draft / Resume Draft — quotes-in-progress are saved as an Opportunity
-// in the Discovery phase holding a JSON blob (see draft.ts). This is
-// deliberately separate from "Save quote to Opportunity" in QuoteView, which
-// finalizes a real sales opportunity in the Proposal phase.
+// holding a JSON blob (see draft.ts). "Save quote to Opportunity" in QuoteView moves that same
+// opportunity to Proposal and keeps the blob, so a quote stays resumable from any open phase
+// (Discovery, Proposal, Negotiations, Budgetary Review) until it is closed.
 export default function DraftControls({ hailer, saving, hasDraftActivity, onSave, onResume }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -51,13 +52,18 @@ export default function DraftControls({ hailer, saving, hasDraftActivity, onSave
     setLoading(true);
     setError(null);
     try {
-      const activities = await listAll(hailer, OPPORTUNITY.workflowId, OPPORTUNITY.discoveryPhaseId);
-      const rows = activities
-        .filter((a) => {
+      const perPhase = await Promise.all(
+        OPPORTUNITY.openPhases.map(async (p) =>
+          (await listAll(hailer, OPPORTUNITY.workflowId, p.id)).map((a) => ({ a, phase: p.label })),
+        ),
+      );
+      const rows = perPhase
+        .flat()
+        .filter(({ a }) => {
           const raw = a.fields?.[OPPORTUNITY.fields.configuratorDraftJson];
           return typeof raw === 'string' && raw.trim().length > 0;
         })
-        .map((a) => ({ _id: a._id, name: a.name, updated: a.updated ?? a.created }))
+        .map(({ a, phase }) => ({ _id: a._id, name: a.name, updated: a.updated ?? a.created, phase }))
         .sort((a, b) => b.updated - a.updated);
       setDrafts(rows);
     } catch (err) {
@@ -116,7 +122,7 @@ export default function DraftControls({ hailer, saving, hasDraftActivity, onSave
               </HStack>
             ) : drafts.length === 0 ? (
               <Text color="subtleText" fontSize="sm" py={4}>
-                No saved drafts yet.
+                No saved quotes yet. (Quotes whose opportunity is Closed - Won or Closed - Lost are locked and not listed.)
               </Text>
             ) : (
               <VStack align="stretch" spacing={1} maxH="60vh" overflowY="auto">
@@ -134,7 +140,7 @@ export default function DraftControls({ hailer, saving, hasDraftActivity, onSave
                       {d.name}
                     </Text>
                     <Text fontSize="xs" color="subtleText">
-                      Saved {new Date(d.updated).toLocaleString()}
+                      {d.phase} · Saved {new Date(d.updated).toLocaleString()}
                     </Text>
                   </Box>
                 ))}

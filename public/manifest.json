@@ -2,8 +2,8 @@
   "author": "TMRX",
   "appId": "6a686250ecb3aa66f7e12b14",
   "description": "Configure a product from the Price List catalog, generate a customer quote, push parts to a Work Order, or start a Rental.",
-  "version": "3.28.1",
-  "versionDescription": "Incoterms: FCA is now split into FCA Origin (Finland) and FCA Origin (USA) in the quote and rental Incoterms dropdowns, matching the workspace field.",
+  "version": "3.29.0",
+  "versionDescription": "Quotes stay editable until the PO arrives: Save quote to Opportunity now stores the whole quote on the opportunity and updates the same opportunity on later saves (no duplicates, new PDF added, older PDFs kept). Resume Draft lists quotes from every open phase (Discovery, Proposal, Negotiations, Budgetary Review) with their phase. Opportunities in Closed - Won / Closed - Lost are locked. Save Draft no longer renames an opportunity that has moved past Discovery.",
   "config": {
     "fields": {
       "workflowId": {

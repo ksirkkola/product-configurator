@@ -189,6 +189,16 @@ export const OPPORTUNITY = {
   workflowId: '6a041734fc4db70b8339a63e',
   proposalPhaseId: '6a0428a8fc4db70b833a3aa6',
   discoveryPhaseId: '6a041734fc4db70b8339a639',
+  // A quote stays an editable draft (resumable, re-savable with a refreshed PDF) while its
+  // opportunity is in one of these phases. Once a PO is received it moves to Closed - Won (or
+  // Closed - Lost) and the quote is locked.
+  openPhases: [
+    { id: '6a041734fc4db70b8339a639', label: 'Discovery' },
+    { id: '6a0428a8fc4db70b833a3aa6', label: 'Proposal' },
+    { id: '6a04292cfc4db70b833a3eb1', label: 'Negotiations' },
+    { id: '6a9a78c320b2c43481f739cf', label: 'Budgetary Review' },
+  ],
+  closedPhaseIds: ['6a044d3669ca0986f1f70dc0', '6a044dad69ca0986f1f710ee'],
   fields: {
     configuratorDraftJson: '6a8e8598201471f67b45bc7e', // JSON blob — Save Draft / Resume Draft state
     leadInformation: '6a045b3869ca0986f1f788ba', // activitylink -> Customers | Contact persons (Account + Contact)
